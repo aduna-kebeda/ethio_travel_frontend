@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 339 82% 51%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 20%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 40 100% 60%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 339 82% 51%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  .heading-1-b {
+    @apply text-5xl font-bold;
+  }
+  .heading-2-b-b {
+    @apply text-4xl font-bold;
+  }
+  .heading-3-mi-b {
+    @apply text-3xl font-medium italic;
+  }
+  .body-1-m {
+    @apply text-base font-medium;
+  }
+  .body-2-m {
+    @apply text-sm font-medium;
+  }
+  .body-3-m {
+    @apply text-xs font-medium;
+  }
+  .body-1-b {
+    @apply text-base font-bold;
+  }
+  .btn-1-b {
+    @apply text-lg font-bold;
+  }
+  .btn-2-b {
+    @apply text-base font-bold;
+  }
+  .btn-3-b {
+    @apply text-xs font-bold;
+  }
+  .btn-3-bo-b {
+    @apply text-xs font-bold;
+  }
+  .heading-4-b-e {
+    @apply text-2xl font-bold italic;
+  }
+}
