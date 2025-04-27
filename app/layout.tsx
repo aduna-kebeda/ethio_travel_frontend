@@ -1,26 +1,27 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import "./globals.css"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
-import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProvider } from "@/components/auth-provider"
-import { Chatbot } from "@/components/chatbot"
-import { ScrollToTop } from "@/components/scroll-to-top"
+import type React from "react";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
+import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from "@/components/auth-provider";
+import { Chatbot } from "@/components/chatbot";
+import { ScrollToTop } from "@/components/scroll-to-top";
+import { Suspense } from "react";
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "EthioTravel - Discover Ethiopia",
   description: "Your ultimate guide to traveling in Ethiopia",
   generator: "v0.dev",
-}
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
@@ -30,7 +31,9 @@ export default function RootLayout({
             <ScrollToTop />
             <div className="flex min-h-screen flex-col">
               <Navbar />
-              <main className="flex-1">{children}</main>
+              <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+                <main className="flex-1">{children}</main>
+              </Suspense>
               <Footer />
               <Chatbot />
             </div>
@@ -38,5 +41,5 @@ export default function RootLayout({
         </ThemeProvider>
       </body>
     </html>
-  )
+  );
 }

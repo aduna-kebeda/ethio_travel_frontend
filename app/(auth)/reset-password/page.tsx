@@ -1,29 +1,27 @@
-"use client"
+"use client";
 
-import type React from "react"
+import { Suspense, useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Logo } from "@/components/logo";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { AuthLayout } from "@/components/auth-layout";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Logo } from "@/components/logo"
-import { ArrowLeft, Eye, EyeOff } from "lucide-react"
-import { AuthLayout } from "@/components/auth-layout"
-
-export default function ResetPasswordPage() {
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [isSubmitted, setIsSubmitted] = useState(false)
+function ResetPasswordContent() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    // Handle password reset
-    console.log({ password, confirmPassword })
-    setIsSubmitted(true)
-  }
+    e.preventDefault();
+    // Handle password reset logic
+    console.log({ password, confirmPassword });
+    setIsSubmitted(true);
+  };
 
   return (
     <AuthLayout>
@@ -35,7 +33,7 @@ export default function ResetPasswordPage() {
         <Logo />
         <h2 className="mt-6 text-2xl font-bold text-gray-900">Set a password</h2>
         <p className="mt-2 text-sm text-gray-600">
-          Your password has been resetted. Please set a new password for your account.
+          Your password has been reset. Please set a new password for your account.
         </p>
       </div>
 
@@ -121,5 +119,13 @@ export default function ResetPasswordPage() {
         </div>
       )}
     </AuthLayout>
-  )
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <ResetPasswordContent />
+    </Suspense>
+  );
 }

@@ -1,20 +1,20 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Container } from "@/components/container"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { createBlogPost } from "@/app/actions/blog-actions"
-import { ImageUpload } from "../components/image-upload"
-import { useToast } from "@/hooks/use-toast"
-import { Loader2, ArrowLeft } from "lucide-react"
-import Link from "next/link"
+import { Suspense, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Container } from "@/components/container";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { createBlogPost } from "@/app/actions/blog-actions";
+import { ImageUpload } from "../components/image-upload";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 const categories = [
   { id: "culture", name: "Culture" },
@@ -23,68 +23,68 @@ const categories = [
   { id: "food", name: "Food" },
   { id: "history", name: "History" },
   { id: "adventure", name: "Adventure" },
-]
+];
 
-export default function CreateBlogPost() {
-  const router = useRouter()
-  const { toast } = useToast()
+function CreateBlogPostContent() {
+  const router = useRouter();
+  const { toast } = useToast();
 
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     excerpt: "",
     content: "",
     category: "",
     imageUrl: "",
-  })
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleCategoryChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, category: value }))
-  }
+    setFormData((prev) => ({ ...prev, category: value }));
+  };
 
   const handleImageUpload = (url: string) => {
-    setFormData((prev) => ({ ...prev, imageUrl: url }))
-  }
+    setFormData((prev) => ({ ...prev, imageUrl: url }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!formData.title || !formData.content || !formData.category) {
       toast({
         title: "Missing fields",
         description: "Please fill in all required fields.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
     try {
-      setIsSubmitting(true)
+      setIsSubmitting(true);
 
       // In a real implementation, this would call a server action to save the post
-      await createBlogPost(formData)
+      await createBlogPost(formData);
 
       toast({
         title: "Success!",
         description: "Your blog post has been published.",
-      })
+      });
 
-      router.push("/blog")
+      router.push("/blog");
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to publish your blog post. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <div className="bg-gray-50 min-h-screen py-10">
@@ -196,5 +196,13 @@ export default function CreateBlogPost() {
         </div>
       </Container>
     </div>
-  )
+  );
+}
+
+export default function CreateBlogPost() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <CreateBlogPostContent />
+    </Suspense>
+  );
 }

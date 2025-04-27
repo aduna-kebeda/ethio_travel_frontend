@@ -1,62 +1,63 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
-import Link from "next/link"
+import { useEffect, useState } from "react";
+import Link from "next/link";
 
 export default function AuthError() {
-  const searchParams = useSearchParams()
-  const [error, setError] = useState<string | null>(null)
-  const [errorDescription, setErrorDescription] = useState<string>("")
+  const [error, setError] = useState<string | null>(null);
+  const [errorDescription, setErrorDescription] = useState<string>("");
 
   useEffect(() => {
-    const errorParam = searchParams?.get("error")
-    setError(errorParam)
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const errorParam = searchParams.get("error");
+      setError(errorParam);
 
-    // Set a user-friendly error description based on the error code
-    switch (errorParam) {
-      case "Configuration":
-        setErrorDescription("There is a problem with the server configuration.")
-        break
-      case "AccessDenied":
-        setErrorDescription("You do not have permission to sign in.")
-        break
-      case "Verification":
-        setErrorDescription("The verification link may have been used or is no longer valid.")
-        break
-      case "OAuthSignin":
-        setErrorDescription("Error in the OAuth sign-in process.")
-        break
-      case "OAuthCallback":
-        setErrorDescription("Error in the OAuth callback process.")
-        break
-      case "OAuthCreateAccount":
-        setErrorDescription("Could not create OAuth provider user in the database.")
-        break
-      case "EmailCreateAccount":
-        setErrorDescription("Could not create email provider user in the database.")
-        break
-      case "Callback":
-        setErrorDescription("Error in the OAuth callback handler.")
-        break
-      case "OAuthAccountNotLinked":
-        setErrorDescription("Email on the account is already linked, but not with this OAuth account.")
-        break
-      case "EmailSignin":
-        setErrorDescription("Check your email inbox for the sign-in link.")
-        break
-      case "CredentialsSignin":
-        setErrorDescription("The credentials you provided were invalid.")
-        break
-      case "SessionRequired":
-        setErrorDescription("You must be signed in to access this page.")
-        break
-      case "Default":
-      default:
-        setErrorDescription("An unexpected error occurred. Please try again later.")
-        break
+      // Set a user-friendly error description based on the error code
+      switch (errorParam) {
+        case "Configuration":
+          setErrorDescription("There is a problem with the server configuration.");
+          break;
+        case "AccessDenied":
+          setErrorDescription("You do not have permission to sign in.");
+          break;
+        case "Verification":
+          setErrorDescription("The verification link may have been used or is no longer valid.");
+          break;
+        case "OAuthSignin":
+          setErrorDescription("Error in the OAuth sign-in process.");
+          break;
+        case "OAuthCallback":
+          setErrorDescription("Error in the OAuth callback process.");
+          break;
+        case "OAuthCreateAccount":
+          setErrorDescription("Could not create OAuth provider user in the database.");
+          break;
+        case "EmailCreateAccount":
+          setErrorDescription("Could not create email provider user in the database.");
+          break;
+        case "Callback":
+          setErrorDescription("Error in the OAuth callback handler.");
+          break;
+        case "OAuthAccountNotLinked":
+          setErrorDescription("Email on the account is already linked, but not with this OAuth account.");
+          break;
+        case "EmailSignin":
+          setErrorDescription("Check your email inbox for the sign-in link.");
+          break;
+        case "CredentialsSignin":
+          setErrorDescription("The credentials you provided were invalid.");
+          break;
+        case "SessionRequired":
+          setErrorDescription("You must be signed in to access this page.");
+          break;
+        case "Default":
+        default:
+          setErrorDescription("An unexpected error occurred. Please try again later.");
+          break;
+      }
     }
-  }, [searchParams])
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4">
@@ -85,5 +86,5 @@ export default function AuthError() {
         </div>
       </div>
     </div>
-  )
+  );
 }

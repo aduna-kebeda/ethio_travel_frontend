@@ -1,10 +1,9 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Logo } from "@/components/logo"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/logo";
 import {
   Compass,
   Mountain,
@@ -18,16 +17,17 @@ import {
   Palmtree,
   Map,
   Heart,
-} from "lucide-react"
-import { AuthLayout } from "@/components/auth-layout"
+} from "lucide-react";
+import { AuthLayout } from "@/components/auth-layout";
 
 interface Interest {
-  id: string
-  name: string
-  icon: React.ReactNode
+  id: string;
+  name: string;
+  icon: React.ReactNode;
 }
 
-export default function ChooseInterestsPage() {
+function InterestsContent() {
+  const router = useRouter();
   const interests: Interest[] = [
     { id: "adventure", name: "Adventure", icon: <Compass className="h-6 w-6" /> },
     { id: "hiking", name: "Hiking", icon: <Mountain className="h-6 w-6" /> },
@@ -41,22 +41,26 @@ export default function ChooseInterestsPage() {
     { id: "beaches", name: "Beaches", icon: <Palmtree className="h-6 w-6" /> },
     { id: "roadtrips", name: "Road Trips", icon: <Map className="h-6 w-6" /> },
     { id: "wellness", name: "Wellness", icon: <Heart className="h-6 w-6" /> },
-  ]
+  ];
 
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([])
+  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
 
   const toggleInterest = (id: string) => {
-    setSelectedInterests((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]))
-  }
+    setSelectedInterests((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
 
   const handleSkip = () => {
-    // Handle skip logic and redirect to next step
-  }
+    // Redirect to the next step
+    router.push("/next-step");
+  };
 
   const handleNext = () => {
-    // Handle interests selection and redirect to next step
-    console.log({ selectedInterests })
-  }
+    // Handle interests selection and redirect to the next step
+    console.log({ selectedInterests });
+    router.push("/next-step");
+  };
 
   return (
     <AuthLayout imagePosition="left">
@@ -67,7 +71,9 @@ export default function ChooseInterestsPage() {
 
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900">Choose interest</h2>
-          <p className="mt-2 text-sm text-gray-600">Interest can be changed anytime in the profile setting.</p>
+          <p className="mt-2 text-sm text-gray-600">
+            Interest can be changed anytime in the profile setting.
+          </p>
         </div>
 
         <div className="grid grid-cols-3 gap-4 mb-8">
@@ -88,14 +94,28 @@ export default function ChooseInterestsPage() {
         </div>
 
         <div className="flex space-x-4">
-          <Button type="button" variant="outline" className="w-full" onClick={handleSkip}>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handleSkip}
+          >
             Skip
           </Button>
-          <Button type="button" className="w-full" onClick={handleNext} disabled={selectedInterests.length === 0}>
+          <Button
+            type="button"
+            className="w-full"
+            onClick={handleNext}
+            disabled={selectedInterests.length === 0}
+          >
             Next
           </Button>
         </div>
       </div>
     </AuthLayout>
-  )
+  );
+}
+
+export default function ChooseInterestsPage() {
+  return <InterestsContent />;
 }

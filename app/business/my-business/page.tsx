@@ -1,11 +1,12 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { Container } from "@/components/container"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useState } from "react";
+import Link from "next/link";
+import { Container } from "@/components/container";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +14,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,12 +25,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { CheckCircle, Clock, Edit, Eye, MoreVertical, PlusCircle, Trash2, XCircle } from "lucide-react"
+} from "@/components/ui/alert-dialog";
+import { CheckCircle, Clock, Edit, Eye, MoreVertical, PlusCircle, Trash2, XCircle } from "lucide-react";
 
 export default function MyBusinessPage() {
-  // Mock data - in a real app, this would come from a database
-  const myBusinesses = [
+  // Mock data - in a real app, this would come from an API
+  const [myBusinesses, setMyBusinesses] = useState([
     {
       id: "b1",
       name: "Addis Ababa Tour Guide",
@@ -53,7 +54,11 @@ export default function MyBusinessPage() {
       status: "approved",
       createdAt: "2023-09-05",
     },
-  ]
+  ]);
+
+  const handleDelete = (id: string) => {
+    setMyBusinesses((prev) => prev.filter((business) => business.id !== id));
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -63,7 +68,7 @@ export default function MyBusinessPage() {
             <CheckCircle className="h-3 w-3" />
             Verified
           </Badge>
-        )
+        );
       case "pending":
         return (
           <Badge
@@ -73,7 +78,7 @@ export default function MyBusinessPage() {
             <Clock className="h-3 w-3" />
             Pending
           </Badge>
-        )
+        );
       case "rejected":
         return (
           <Badge
@@ -83,11 +88,44 @@ export default function MyBusinessPage() {
             <XCircle className="h-3 w-3" />
             Rejected
           </Badge>
-        )
+        );
       default:
-        return null
+        return null;
     }
-  }
+  };
+
+  const renderRejectedListings = () => {
+    const rejectedBusinesses = myBusinesses.filter((b) => b.status === "rejected");
+
+    if (rejectedBusinesses.length === 0) return null;
+
+    return (
+      <Card className="mt-6 border-red-100">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-red-700 text-lg">Rejected Listings</CardTitle>
+          <CardDescription>
+            The following listings were rejected. Please review the feedback and update your information.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {rejectedBusinesses.map((business) => (
+            <div key={business.id} className="p-4 bg-red-50 rounded-md mb-3 last:mb-0">
+              <h3 className="font-medium text-gray-900">{business.name}</h3>
+              <p className="text-sm text-gray-700 mt-1">
+                <span className="font-medium">Reason:</span> {business.rejectionReason}
+              </p>
+              <div className="mt-3">
+                <Button size="sm" variant="outline" className="h-8">
+                  <Edit className="mr-2 h-3 w-3" />
+                  Update Listing
+                </Button>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <Container className="py-10">
@@ -181,7 +219,12 @@ export default function MyBusinessPage() {
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                                  <AlertDialogAction
+                                    className="bg-red-600 hover:bg-red-700"
+                                    onClick={() => handleDelete(business.id)}
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
@@ -196,35 +239,8 @@ export default function MyBusinessPage() {
           </Card>
         )}
 
-        {myBusinesses.some((b) => b.status === "rejected") && (
-          <Card className="mt-6 border-red-100">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-red-700 text-lg">Rejected Listings</CardTitle>
-              <CardDescription>
-                The following listings were rejected. Please review the feedback and update your information.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {myBusinesses
-                .filter((b) => b.status === "rejected")
-                .map((business) => (
-                  <div key={business.id} className="p-4 bg-red-50 rounded-md mb-3 last:mb-0">
-                    <h3 className="font-medium text-gray-900">{business.name}</h3>
-                    <p className="text-sm text-gray-700 mt-1">
-                      <span className="font-medium">Reason:</span> {business.rejectionReason}
-                    </p>
-                    <div className="mt-3">
-                      <Button size="sm" variant="outline" className="h-8">
-                        <Edit className="mr-2 h-3 w-3" />
-                        Update Listing
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-            </CardContent>
-          </Card>
-        )}
+        {renderRejectedListings()}
       </div>
     </Container>
-  )
+  );
 }

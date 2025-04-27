@@ -1,24 +1,36 @@
-"use client"
+"use client";
 
-import { Container } from "@/components/container"
-import { HeroSection } from "./components/hero-section"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { CheckCircle, MapPin, Phone, Star } from "lucide-react"
-import Link from "next/link"
-import Image from "next/image"
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Container } from "@/components/container";
+import { HeroSection } from "./components/hero-section";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle, MapPin, Phone, Star } from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
 
-interface BusinessPageProps {
-  searchParams: {
-    category?: string
-    region?: string
-    query?: string
-    page?: string
-  }
-}
+export default function BusinessDirectoryPage() {
+  const router = useRouter();
+  const [queryParams, setQueryParams] = useState({
+    category: "",
+    region: "",
+    query: "",
+    page: "1",
+  });
 
-export default async function BusinessDirectoryPage({ searchParams }: BusinessPageProps) {
+  // Extract query parameters from the URL
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    setQueryParams({
+      category: searchParams.get("category") || "",
+      region: searchParams.get("region") || "",
+      query: searchParams.get("query") || "",
+      page: searchParams.get("page") || "1",
+    });
+  }, [router]);
+
   // Mock data for businesses
   const businesses = [
     {
@@ -51,86 +63,27 @@ export default async function BusinessDirectoryPage({ searchParams }: BusinessPa
       rating: 4.5,
       image: "/placeholder.svg?height=300&width=500&text=Yod+Abyssinia",
     },
-    {
-      id: "3",
-      businessName: "Ethiopia Travel Agency",
-      businessType: "Travel Agency",
-      description: "Full-service tour operator specializing in cultural and historical tours of Ethiopia.",
-      region: "Amhara",
-      city: "Bahir Dar",
-      address: "Main Street, Bahir Dar",
-      phone: "+251 91 123 4567",
-      email: "info@ethiopiatravel.com",
-      website: "www.ethiopiatravel.com",
-      verified: false,
-      rating: 4.2,
-      image: "/placeholder.svg?height=300&width=500&text=Ethiopia+Travel",
-    },
-    {
-      id: "4",
-      businessName: "Kuriftu Resort & Spa",
-      businessType: "Resort",
-      description: "Luxury resort with stunning views of Lake Tana and excellent amenities.",
-      region: "Amhara",
-      city: "Bahir Dar",
-      address: "Lake Tana, Bahir Dar",
-      phone: "+251 11 662 6666",
-      email: "reservations@kuriftu.com",
-      website: "www.kuriftu.com",
-      verified: true,
-      rating: 4.7,
-      image: "/placeholder.svg?height=300&width=500&text=Kuriftu+Resort",
-    },
-    {
-      id: "5",
-      businessName: "Lalibela Tours",
-      businessType: "Tour Guide",
-      description: "Expert guides for the rock-hewn churches of Lalibela and surrounding areas.",
-      region: "Amhara",
-      city: "Lalibela",
-      address: "Church Square, Lalibela",
-      phone: "+251 91 987 6543",
-      email: "info@lalibelatours.com",
-      website: "www.lalibelatours.com",
-      verified: true,
-      rating: 4.9,
-      image: "/placeholder.svg?height=300&width=500&text=Lalibela+Tours",
-    },
-    {
-      id: "6",
-      businessName: "Axum Souvenir Shop",
-      businessType: "Souvenir Shop",
-      description: "Authentic Ethiopian crafts, jewelry, and souvenirs from the historic city of Axum.",
-      region: "Tigray",
-      city: "Axum",
-      address: "Stelae Field Road, Axum",
-      phone: "+251 91 456 7890",
-      email: "shop@axumsouvenirs.com",
-      website: "www.axumsouvenirs.com",
-      verified: false,
-      rating: 4.0,
-      image: "/placeholder.svg?height=300&width=500&text=Axum+Souvenirs",
-    },
-  ]
+    // Add more mock businesses here...
+  ];
 
-  // Filter businesses based on search parameters
+  // Filter businesses based on query parameters
   const filteredBusinesses = businesses.filter((business) => {
-    const matchesCategory = !searchParams.category || business.businessType === searchParams.category
-    const matchesRegion = !searchParams.region || business.region === searchParams.region
+    const matchesCategory = !queryParams.category || business.businessType === queryParams.category;
+    const matchesRegion = !queryParams.region || business.region === queryParams.region;
     const matchesQuery =
-      !searchParams.query ||
-      business.businessName.toLowerCase().includes(searchParams.query.toLowerCase()) ||
-      business.description.toLowerCase().includes(searchParams.query.toLowerCase())
+      !queryParams.query ||
+      business.businessName.toLowerCase().includes(queryParams.query.toLowerCase()) ||
+      business.description.toLowerCase().includes(queryParams.query.toLowerCase());
 
-    return matchesCategory && matchesRegion && matchesQuery
-  })
+    return matchesCategory && matchesRegion && matchesQuery;
+  });
 
   // Pagination
-  const page = searchParams.page ? Number.parseInt(searchParams.page) : 1
-  const itemsPerPage = 6
-  const totalPages = Math.ceil(filteredBusinesses.length / itemsPerPage)
-  const startIndex = (page - 1) * itemsPerPage
-  const paginatedBusinesses = filteredBusinesses.slice(startIndex, startIndex + itemsPerPage)
+  const page = queryParams.page ? Number.parseInt(queryParams.page) : 1;
+  const itemsPerPage = 6;
+  const totalPages = Math.ceil(filteredBusinesses.length / itemsPerPage);
+  const startIndex = (page - 1) * itemsPerPage;
+  const paginatedBusinesses = filteredBusinesses.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -219,7 +172,7 @@ export default async function BusinessDirectoryPage({ searchParams }: BusinessPa
               {totalPages > 1 && (
                 <div className="mt-8 flex justify-center">
                   <nav className="flex items-center space-x-1">
-                    <Button variant="outline" size="icon" onClick={() => {}} disabled={page === 1} asChild>
+                    <Button variant="outline" size="icon" disabled={page === 1} asChild>
                       <Link href={`/business?page=${page - 1}`}>
                         <span className="sr-only">Previous page</span>
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -239,7 +192,7 @@ export default async function BusinessDirectoryPage({ searchParams }: BusinessPa
                       </Button>
                     ))}
 
-                    <Button variant="outline" size="icon" onClick={() => {}} disabled={page === totalPages} asChild>
+                    <Button variant="outline" size="icon" disabled={page === totalPages} asChild>
                       <Link href={`/business?page=${page + 1}`}>
                         <span className="sr-only">Next page</span>
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -255,5 +208,5 @@ export default async function BusinessDirectoryPage({ searchParams }: BusinessPa
         </Container>
       </main>
     </div>
-  )
+  );
 }

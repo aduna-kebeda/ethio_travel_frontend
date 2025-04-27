@@ -1,107 +1,102 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState, useRef } from "react"
-import { Button } from "@/components/ui/button"
-import { Logo } from "@/components/logo"
-import { X, Loader2 } from "lucide-react"
-import { AuthLayout } from "@/components/auth-layout"
-import { uploadFile } from "@/lib/upload-file"
-import { useToast } from "@/hooks/use-toast"
-import { useRouter } from "next/navigation"
+import { useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/logo";
+import { X, Loader2 } from "lucide-react";
+import { AuthLayout } from "@/components/auth-layout";
+import { uploadFile } from "@/lib/upload-file";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 
 export default function ChoosePhotoPage() {
-  const [photo, setPhoto] = useState<string | null>(null)
-  const [file, setFile] = useState<File | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const { toast } = useToast()
-  const router = useRouter()
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  const router = useRouter();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
+    const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      // Check file type
+      // Validate file type
       if (!selectedFile.type.startsWith("image/")) {
         toast({
           title: "Invalid file type",
           description: "Please upload an image file.",
           variant: "destructive",
-        })
-        return
+        });
+        return;
       }
 
-      // Check file size (max 5MB)
+      // Validate file size (max 5MB)
       if (selectedFile.size > 5 * 1024 * 1024) {
         toast({
           title: "File too large",
           description: "Please upload an image smaller than 5MB.",
           variant: "destructive",
-        })
-        return
+        });
+        return;
       }
 
-      setFile(selectedFile)
-      const reader = new FileReader()
+      setFile(selectedFile);
+      const reader = new FileReader();
       reader.onload = () => {
-        setPhoto(reader.result as string)
-      }
-      reader.readAsDataURL(selectedFile)
+        setPhoto(reader.result as string);
+      };
+      reader.readAsDataURL(selectedFile);
     }
-  }
+  };
 
   const handleRemovePhoto = () => {
-    setPhoto(null)
-    setFile(null)
+    setPhoto(null);
+    setFile(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+      fileInputRef.current.value = "";
     }
-  }
+  };
 
   const handleSkip = () => {
-    // Handle skip logic and redirect to next step
-    router.push("/signup/success")
-  }
+    router.push("/signup/success");
+  };
 
   const handleNext = async () => {
     if (!file && !photo) {
-      handleSkip()
-      return
+      handleSkip();
+      return;
     }
 
     try {
-      setUploading(true)
+      setUploading(true);
 
       if (file) {
-        // Upload to Firebase Storage
         const photoUrl = await uploadFile(file, "profiles", (progress) => {
-          setUploadProgress(progress)
-        })
+          setUploadProgress(progress);
+        });
 
-        // Here you would typically save the photoUrl to the user's profile in your database
-        console.log({ photoUrl })
+        // Save photo URL to the user's profile (if applicable)
+        console.log({ photoUrl });
 
         toast({
           title: "Profile photo uploaded",
           description: "Your profile photo has been uploaded successfully.",
-        })
+        });
       }
 
-      // Navigate to next step
-      router.push("/signup/success")
+      router.push("/signup/success");
     } catch (error) {
-      console.error("Error uploading photo:", error)
+      console.error("Error uploading photo:", error);
       toast({
         title: "Upload failed",
         description: "Failed to upload profile photo. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setUploading(false)
+      setUploading(false);
     }
-  }
+  };
 
   return (
     <AuthLayout imagePosition="left">
@@ -111,14 +106,20 @@ export default function ChoosePhotoPage() {
         </div>
 
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">Choose Photo for profile</h2>
-          <p className="mt-2 text-sm text-gray-600">Photo can be changed anytime in the profile setting.</p>
+          <h2 className="text-2xl font-bold text-gray-900">Choose Photo for Profile</h2>
+          <p className="mt-2 text-sm text-gray-600">
+            You can change your profile photo anytime in the settings.
+          </p>
         </div>
 
         <div className="mb-8">
           {photo ? (
             <div className="relative w-40 h-40 mx-auto">
-              <img src={photo || "/placeholder.svg"} alt="Profile" className="w-full h-full object-cover rounded-md" />
+              <img
+                src={photo || "/placeholder.svg"}
+                alt="Profile"
+                className="w-full h-full object-cover rounded-md"
+              />
               <button
                 type="button"
                 onClick={handleRemovePhoto}
@@ -172,10 +173,21 @@ export default function ChoosePhotoPage() {
         </div>
 
         <div className="flex space-x-4">
-          <Button type="button" variant="outline" className="w-full" onClick={handleSkip} disabled={uploading}>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handleSkip}
+            disabled={uploading}
+          >
             Skip
           </Button>
-          <Button type="button" className="w-full" onClick={handleNext} disabled={uploading}>
+          <Button
+            type="button"
+            className="w-full"
+            onClick={handleNext}
+            disabled={uploading}
+          >
             {uploading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -188,5 +200,5 @@ export default function ChoosePhotoPage() {
         </div>
       </div>
     </AuthLayout>
-  )
+  );
 }
