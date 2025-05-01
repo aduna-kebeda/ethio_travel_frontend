@@ -1,7 +1,0 @@
-export * from "./hero-section"
-export * from "./tour-plan-section"
-export * from "./tour-packages-section"
-export * from "./services-section"
-export * from "./ai-travel-section"
-export * from "./testimonials-section"
-export * from "./cta-section"

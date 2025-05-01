@@ -1,5 +1,0 @@
-export * from "./information-tab"
-export * from "./tour-plan-tab"
-export * from "./location-tab"
-export * from "./gallery-tab"
-export * from "./other-information-sidebar"
