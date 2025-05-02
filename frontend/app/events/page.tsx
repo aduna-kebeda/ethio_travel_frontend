@@ -394,7 +394,7 @@ export default function EventsPage() {
         <div className="space-y-12">
           <HeroSection onOpenSubscribeModal={() => setShowSubscribeModal(true)} />
 
-          <div className="bg-white rounded-lg shadow-md p-6 sticky top-20 z-10 border border-gray-100">
+          <div className="bg-white rounded-lg shadow-md p-6  top-20 z-10 border border-gray-100">
             <SearchFilter
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
