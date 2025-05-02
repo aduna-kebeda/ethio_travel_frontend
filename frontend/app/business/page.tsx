@@ -94,12 +94,12 @@ export default function BusinessDirectoryPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
             <h2 className="text-2xl font-bold text-gray-900">Ethiopian Business Directory</h2>
             <Link href="/business/register">
-              <Button className="bg-primary hover:bg-primary/90">Register Your Business</Button>
+              <Button className="bg-primary rounded-full hover:bg-primary/90">Register Your Business</Button>
             </Link>
           </div>
 
           {filteredBusinesses.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-lg shadow-sm">
+            <div className="text-center py-12 bg-white rounded-full shadow-sm">
               <h3 className="text-xl font-semibold text-gray-800">No businesses found</h3>
               <p className="text-gray-600 mt-2">Try adjusting your search or filter criteria</p>
             </div>
@@ -160,7 +160,7 @@ export default function BusinessDirectoryPage() {
                       </div>
 
                       <Link href={`/business/${business.id}`}>
-                        <Button className="w-full bg-primary hover:bg-primary/90 transition-colors">
+                        <Button className="w-full rounded-full bg-primary hover:bg-primary/90 transition-colors">
                           View Details
                         </Button>
                       </Link>

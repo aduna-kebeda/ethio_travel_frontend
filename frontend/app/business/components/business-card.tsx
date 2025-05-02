@@ -74,7 +74,7 @@ export function BusinessCard({ business }: BusinessCardProps) {
 
       <div className="p-4 pt-0 mt-auto">
         <Link href={`/business/${business.id}`}>
-          <Button className="w-full bg-primary hover:bg-primary/90 transition-colors">View Details</Button>
+          <Button className="w-full bg-primary rounded-full hover:bg-primary/90 transition-colors">View Details</Button>
         </Link>
       </div>
     </div>

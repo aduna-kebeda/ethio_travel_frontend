@@ -185,7 +185,7 @@ export function SidebarFilter({
         </div>
 
         <div className="space-y-3">
-          <Button type="submit" className="w-full bg-[#E91E63] hover:bg-[#D81B60] text-white transition-colors">
+          <Button type="submit" className="w-full rounded-full bg-[#E91E63] hover:bg-[#D81B60] text-white transition-colors">
             Search
           </Button>
 
@@ -193,7 +193,7 @@ export function SidebarFilter({
             type="button"
             onClick={handleReset}
             variant="outline"
-            className="w-full border-[#E91E63] text-[#E91E63] hover:bg-[#E91E63] hover:text-white transition-colors"
+            className="w-full rounded-full border-[#E91E63] text-[#E91E63] hover:bg-[#E91E63] hover:text-white transition-colors"
           >
             Reset Filters
           </Button>

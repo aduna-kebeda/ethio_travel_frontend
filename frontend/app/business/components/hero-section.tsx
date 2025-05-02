@@ -42,7 +42,7 @@ export function HeroSection() {
                 className="pl-10 bg-white/90 border-0 h-12 text-gray-800 placeholder:text-gray-500 focus-visible:ring-primary"
               />
             </div>
-            <Button className="h-12 px-6 bg-primary hover:bg-primary/90 text-white">Search</Button>
+            <Button className="h-12 px-6 bg-primary rounded-r-full hover:bg-primary/90 text-white">Search</Button>
           </div>
 
           <div className="flex flex-wrap justify-center gap-2 mt-4">

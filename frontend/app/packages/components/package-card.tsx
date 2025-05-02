@@ -34,7 +34,7 @@ export function PackageCard({ id, title, location, region, price, duration, imag
           <span className="text-xs text-gray-500">{duration}</span>
         </div>
         <Link href={`/packages/${id}`} className="block mt-4">
-          <Button className="w-full bg-[#E91E63] hover:bg-[#D81B60] transition-colors">View Details</Button>
+          <Button className="w-full rounded-full bg-[#E91E63] hover:bg-[#D81B60] transition-colors">View Details</Button>
         </Link>
       </div>
     </div>

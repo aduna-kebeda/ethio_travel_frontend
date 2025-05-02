@@ -520,7 +520,7 @@ export function Chatbot() {
               <button
                 key={option.id}
                 onClick={() => handleQuickReplyClick(option.id)}
-                className="bg-white hover:bg-gray-100 text-gray-800 text-xs py-2 px-3 rounded-full shadow-sm border border-gray-200 transition-colors text-left"
+                className="bg-white hover:bg-gray-100 text-gray-800 text-xs py-2 px-3 rounded- shadow-sm border border-gray-200 transition-colors text-left"
               >
                 {option.text}
               </button>

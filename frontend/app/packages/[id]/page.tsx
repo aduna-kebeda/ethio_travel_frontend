@@ -1,7 +1,7 @@
 "use client"
 
+import { use } from "react" // Import use directly from react
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -48,7 +48,7 @@ interface PackageDetail {
   galleryImages: string[]
 }
 
-export default function PackageDetailPage({ params }: { params: { id: string } }) {
+export default function PackageDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const [packageDetail, setPackageDetail] = useState<PackageDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -59,6 +59,10 @@ export default function PackageDetailPage({ params }: { params: { id: string } }
   const [bookingSuccess, setBookingSuccess] = useState(false)
   const [inquirySuccess, setInquirySuccess] = useState(false)
 
+  // Unwrap params using use from react
+  const params = use(paramsPromise)
+  const packageId = params.id
+
   useEffect(() => {
     // In a real app, this would be an API call
     const fetchPackageDetail = () => {
@@ -68,7 +72,7 @@ export default function PackageDetailPage({ params }: { params: { id: string } }
       setTimeout(() => {
         // Mock data for the package detail
         const mockPackageDetail: PackageDetail = {
-          id: params.id,
+          id: packageId,
           title: "Lalibela Rock-Hewn Churches Tour",
           location: "Lalibela",
           region: "Amhara region",
@@ -112,14 +116,14 @@ export default function PackageDetailPage({ params }: { params: { id: string } }
     }
 
     fetchPackageDetail()
-  }, [params.id])
+  }, [packageId])
 
   const handleBookNow = () => {
     if (!selectedDate) return
 
     // In a real app, this would submit to an API
     console.log("Booking submitted:", {
-      packageId: params.id,
+      packageId,
       date: selectedDate,
       adults,
       children,
