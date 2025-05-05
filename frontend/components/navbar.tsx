@@ -7,6 +7,7 @@ import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
+import { ClientOnly } from "@/components/client-only"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,18 +16,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { logoutUser } from "@/app/actions/auth-actions"
+import { useAuth } from "@/components/auth-provider"
 
-interface NavbarProps {
-  user?: {
-    name: string
-    image?: string
-  } | null
-}
-
-export function Navbar({ user }: NavbarProps) {
+export function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
+  const { user, isAuthenticated, isLoading, logout } = useAuth()
 
   const navItems = [
     { name: "Home", href: "/home" },
@@ -40,6 +37,15 @@ export function Navbar({ user }: NavbarProps) {
   const handleNavigation = (href: string) => {
     setIsOpen(false)
     router.push(href)
+  }
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser()
+      logout()
+    } catch (error) {
+      console.error("Logout error:", error)
+    }
   }
 
   return (
@@ -65,7 +71,7 @@ export function Navbar({ user }: NavbarProps) {
                 <span
                   className={cn(
                     "absolute bottom-0 left-0 h-0.5 bg-primary transition-all duration-300",
-                    pathname === item.href ? "w-full" : "w-0 group-hover:w-full"
+                    pathname === item.href ? "w-full" : "w-0 group-hover:w-full",
                   )}
                 />
               </Link>
@@ -73,10 +79,14 @@ export function Navbar({ user }: NavbarProps) {
           </nav>
 
           <div className="flex items-center space-x-4">
-            {user ? (
+            {isLoading ? (
+              <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse"></div>
+            ) : isAuthenticated && user ? (
               <>
                 <Button variant="ghost" size="icon" className="relative rounded-md">
-                  <Bell className="h-5 w-5" />
+                  <ClientOnly>
+                    <Bell className="h-5 w-5" />
+                  </ClientOnly>
                   <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-primary"></span>
                 </Button>
 
@@ -84,7 +94,9 @@ export function Navbar({ user }: NavbarProps) {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm" className="flex items-center rounded-md">
-                        <Building2 className="h-4 w-4 mr-2" />
+                        <ClientOnly>
+                          <Building2 className="h-4 w-4 mr-2" />
+                        </ClientOnly>
                         My Business
                       </Button>
                     </DropdownMenuTrigger>
@@ -109,20 +121,24 @@ export function Navbar({ user }: NavbarProps) {
                   <DropdownMenuTrigger asChild>
                     <div className="flex items-center space-x-2 cursor-pointer">
                       <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-white overflow-hidden">
-                        {user.image ? (
+                        {user.profile_image ? (
                           <img
-                            src={user.image || "/placeholder.svg"}
-                            alt={user.name}
+                            src={user.profile_image || "/placeholder.svg"}
+                            alt={user.first_name || user.username}
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <User className="h-5 w-5" />
+                          <ClientOnly>
+                            <User className="h-5 w-5" />
+                          </ClientOnly>
                         )}
                       </div>
                     </div>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
+                    <DropdownMenuLabel>
+                      {user.first_name ? `${user.first_name} ${user.last_name}` : user.username}
+                    </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <Link href="/profile">My Profile</Link>
@@ -131,19 +147,22 @@ export function Navbar({ user }: NavbarProps) {
                       <Link href="/business/my-business">My Business</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
+                      <Link href="/blog/my-posts">My Blog Posts</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
                       <Link href="/settings">Settings</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/logout">Logout</Link>
-                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
             ) : (
               <div className="flex items-center space-x-2">
                 <Link href="/login">
-                  <Button variant="ghost" className="rounded-full">Login</Button>
+                  <Button variant="ghost" className="rounded-full">
+                    Login
+                  </Button>
                 </Link>
                 <Link href="/signup">
                   <Button className="rounded-full">Register</Button>
@@ -154,7 +173,7 @@ export function Navbar({ user }: NavbarProps) {
             {/* Mobile menu button */}
             <div className="md:hidden">
               <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)} className="rounded-md">
-                {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                <ClientOnly>{isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}</ClientOnly>
               </Button>
             </div>
           </div>
@@ -175,22 +194,36 @@ export function Navbar({ user }: NavbarProps) {
                   onClick={() => setIsOpen(false)}
                 >
                   {item.name}
-                  {pathname === item.href && (
-                    <span className="absolute bottom-1 left-3 right-3 h-0.5 bg-primary" />
-                  )}
+                  {pathname === item.href && <span className="absolute bottom-1 left-3 right-3 h-0.5 bg-primary" />}
                 </Link>
               ))}
-              {user && (
-                <Link
-                  href="/business/my-business"
-                  className="px-3 py-2 text-base font-semibold text-gray-700 hover:text-primary relative"
-                  onClick={() => setIsOpen(false)}
-                >
-                  My Business
-                  {pathname === "/business/my-business" && (
-                    <span className="absolute bottom-1 left-3 right-3 h-0.5 bg-primary" />
-                  )}
-                </Link>
+              {isAuthenticated && user && (
+                <>
+                  <Link
+                    href="/business/my-business"
+                    className="px-3 py-2 text-base font-semibold text-gray-700 hover:text-primary relative"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    My Business
+                    {pathname === "/business/my-business" && (
+                      <span className="absolute bottom-1 left-3 right-3 h-0.5 bg-primary" />
+                    )}
+                  </Link>
+                  <Link
+                    href="/profile"
+                    className="px-3 py-2 text-base font-semibold text-gray-700 hover:text-primary relative"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    My Profile
+                    {pathname === "/profile" && <span className="absolute bottom-1 left-3 right-3 h-0.5 bg-primary" />}
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="px-3 py-2 text-base font-semibold text-gray-700 hover:text-primary relative text-left"
+                  >
+                    Logout
+                  </button>
+                </>
               )}
             </div>
           </div>

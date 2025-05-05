@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { signIn } from "next-auth/react"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 
@@ -13,9 +13,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { AuthLayout } from "@/components/auth-layout"
+import { loginUser } from "@/app/actions/auth-actions"
+import { useAuth } from "@/components/auth-provider"
 
 export default function LoginPage() {
   const router = useRouter()
+  const { login } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -23,25 +26,33 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
 
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get("redirect") || "/home"
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
 
     try {
-      const result = await signIn("credentials", {
+      const result = await loginUser({
         email,
         password,
-        redirect: false,
       })
 
-      if (result?.error) {
-        setError("Invalid email or password")
+      if (!result.success) {
+        setError(result.error || "Invalid email or password")
         setIsLoading(false)
         return
       }
 
-      router.push("/")
+      // Update auth context
+      if (result.data?.user) {
+        login(result.data.user)
+      }
+
+      // Redirect to the requested page or home
+      router.push(redirect)
     } catch (error) {
       setError("Something went wrong. Please try again.")
       setIsLoading(false)
@@ -51,7 +62,7 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setIsLoading(true)
     try {
-      await signIn("google", { callbackUrl: "/" })
+      await signIn("google", { callbackUrl: redirect })
     } catch (error) {
       console.error("Google sign in error:", error)
       setError("Failed to sign in with Google. Please try again.")
@@ -136,7 +147,11 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <Button type="submit" className="w-full rounded-full bg-[#E91E63] hover:bg-[#D81B60]" disabled={isLoading}>
+              <Button
+                type="submit"
+                className="w-full rounded-full bg-[#E91E63] hover:bg-[#D81B60]"
+                disabled={isLoading}
+              >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

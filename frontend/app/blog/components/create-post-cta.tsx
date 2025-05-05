@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Container } from "@/components/container"
@@ -11,11 +10,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createBlogPost } from "@/app/actions/blog-actions"
-import { ImageUpload } from "../components/image-upload"
+import ImageUpload from "../components/image-upload"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, ArrowLeft, PenLine } from "lucide-react"
+import { Loader2, ArrowLeft, Edit, ArrowRight } from "lucide-react"
 import Link from "next/link"
-import { useSession } from "next-auth/react"
+import { ClientOnly } from "@/components/client-only"
 
 const categories = [
   { id: "culture", name: "Culture" },
@@ -26,33 +25,32 @@ const categories = [
   { id: "adventure", name: "Adventure" },
 ]
 
-export const CreatePostCTA = () => {
-  const { data: session } = useSession()
-
-  if (!session) return null
-
+export function CreatePostCTA() {
   return (
-    <section className="py-8 bg-primary/5 rounded-xl relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full -mr-32 -mt-32"></div>
-      <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/10 rounded-full -ml-32 -mb-32"></div>
-
-      <div className="relative">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-2xl font-bold mb-3">Share Your Ethiopian Adventure</h2>
-          <p className="text-gray-600 mb-6">
-            Have a story to tell about your travels in Ethiopia? Share your experiences, tips, and insights with our
-            community.
-          </p>
-
-          <Button asChild className="rounded-full px-6">
-            <Link href="/blog/create" className="flex items-center">
-              <PenLine className="mr-2 h-4 w-4" />
-              Create New Post
+    <ClientOnly>
+      <div className="bg-gradient-to-r from-primary/80 to-primary rounded-xl p-6 md:p-8 text-white">
+        <div className="flex flex-col md:flex-row md:items-center gap-6">
+          <div className="md:w-2/3">
+            <div className="bg-white text-primary p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
+              <Edit className="h-6 w-6" />
+            </div>
+            <h3 className="text-2xl font-bold mb-2">Share your Ethiopian adventure</h3>
+            <p className="text-white/90">
+              Have a story to tell about your travels in Ethiopia? Create a blog post and share your experiences with
+              our community.
+            </p>
+          </div>
+          <div className="md:w-1/3 flex justify-start md:justify-end">
+            <Link href="/blog/create">
+              <Button variant="secondary" className="group">
+                Create a Post
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Button>
             </Link>
-          </Button>
+          </div>
         </div>
       </div>
-    </section>
+    </ClientOnly>
   )
 }
 
@@ -96,15 +94,11 @@ export default function CreateBlogPost() {
 
     try {
       setIsSubmitting(true)
-
-      // In a real implementation, this would call a server action to save the post
       await createBlogPost(formData)
-
       toast({
         title: "Success!",
         description: "Your blog post has been published.",
       })
-
       router.push("/blog")
     } catch (error) {
       toast({
@@ -195,7 +189,7 @@ export default function CreateBlogPost() {
 
               <div className="space-y-2">
                 <Label>Featured Image</Label>
-                <ImageUpload onImageUploaded={handleImageUpload} />
+                <ImageUpload value={formData.imageUrl} onChange={handleImageUpload} />
                 {formData.imageUrl && (
                   <div className="mt-2">
                     <img

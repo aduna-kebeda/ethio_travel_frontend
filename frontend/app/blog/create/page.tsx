@@ -1,208 +1,224 @@
-"use client";
+"use client"
 
-import type React from "react";
-
-import { Suspense, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Container } from "@/components/container";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createBlogPost } from "@/app/actions/blog-actions";
-import { ImageUpload } from "../components/image-upload";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import type React from "react"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Loader2 } from "lucide-react"
+import ImageUpload from "../components/image-upload"
+import { createBlogPost } from "@/app/actions/blog-actions"
+import { useToast } from "@/hooks/use-toast"
 
 const categories = [
-  { id: "culture", name: "Culture" },
-  { id: "travel", name: "Travel" },
-  { id: "technology", name: "Technology" },
-  { id: "food", name: "Food" },
-  { id: "history", name: "History" },
-  { id: "adventure", name: "Adventure" },
-];
+  { value: "travel", label: "Travel" },
+  { value: "culture", label: "Culture" },
+  { value: "food", label: "Food" },
+  { value: "adventure", label: "Adventure" },
+  { value: "history", label: "History" },
+  { value: "technology", label: "Technology" },
+]
 
-function CreateBlogPostContent() {
-  const router = useRouter();
-  const { toast } = useToast();
+export default function CreateBlogPost() {
+  const [title, setTitle] = useState("")
+  const [excerpt, setExcerpt] = useState("")
+  const [content, setContent] = useState("")
+  const [category, setCategory] = useState("")
+  const [tags, setTags] = useState("")
+  const [imageUrl, setImageUrl] = useState("")
+  const [featured, setFeatured] = useState(false)
+  const [status, setStatus] = useState<"draft" | "published">("draft")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    title: "",
-    excerpt: "",
-    content: "",
-    category: "",
-    imageUrl: "",
-  });
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleCategoryChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, category: value }));
-  };
-
-  const handleImageUpload = (url: string) => {
-    setFormData((prev) => ({ ...prev, imageUrl: url }));
-  };
+  const router = useRouter()
+  const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
 
-    if (!formData.title || !formData.content || !formData.category) {
+    // Validate required fields
+    if (!title || !excerpt || !content || !category) {
       toast({
         title: "Missing fields",
         description: "Please fill in all required fields.",
         variant: "destructive",
-      });
-      return;
+      })
+      return
+    }
+
+    // Validate image for published posts
+    if (!imageUrl && status === "published") {
+      toast({
+        title: "Image Required",
+        description: "Please upload a featured image for published posts.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate Cloudinary URL
+    if (imageUrl && !imageUrl.startsWith("https://res.cloudinary.com/")) {
+      toast({
+        title: "Invalid Image URL",
+        description: "The uploaded image URL is not a valid Cloudinary URL.",
+        variant: "destructive",
+      })
+      return
     }
 
     try {
-      setIsSubmitting(true);
+      setIsSubmitting(true)
 
-      // In a real implementation, this would call a server action to save the post
-      await createBlogPost(formData);
+      const tagArray = tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0)
+
+      const postData = {
+        title,
+        excerpt,
+        content,
+        category,
+        tags: tagArray,
+        imageUrl,
+        status,
+        featured,
+      }
+
+      console.log("Sending blog post data:", postData) // Log for debugging
+
+      await createBlogPost(postData)
 
       toast({
         title: "Success!",
-        description: "Your blog post has been published.",
-      });
+        description: `Blog post ${status === "published" ? "published" : "saved as draft"}.`,
+      })
 
-      router.push("/blog");
+      router.push("/blog")
     } catch (error) {
+      console.error("Error creating blog post:", error)
       toast({
         title: "Error",
-        description: "Failed to publish your blog post. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to create blog post. Please try again.",
         variant: "destructive",
-      });
+      })
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   return (
-    <div className="bg-gray-50 min-h-screen py-10">
-      <Container>
-        <div className="max-w-3xl mx-auto">
-          <div className="mb-6">
-            <Link href="/blog" className="flex items-center text-gray-600 hover:text-primary">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Blog
-            </Link>
+    <div className="container mx-auto py-8">
+      <div className="max-w-3xl mx-auto">
+        <h1 className="text-3xl font-bold mb-8">Create New Blog Post</h1>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="title">Title *</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter a catchy title"
+              required
+            />
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6 md:p-8">
-            <h1 className="text-2xl md:text-3xl font-bold mb-6">Create New Blog Post</h1>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="title">
-                  Title <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="title"
-                  name="title"
-                  placeholder="Enter a compelling title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  className="w-full"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="excerpt">Excerpt</Label>
-                <Textarea
-                  id="excerpt"
-                  name="excerpt"
-                  placeholder="Write a short summary of your post"
-                  value={formData.excerpt}
-                  onChange={handleChange}
-                  className="w-full h-20"
-                />
-                <p className="text-xs text-gray-500">A brief summary that will appear in blog listings (optional)</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="content">
-                  Content <span className="text-red-500">*</span>
-                </Label>
-                <Textarea
-                  id="content"
-                  name="content"
-                  placeholder="Write your blog post content here"
-                  value={formData.content}
-                  onChange={handleChange}
-                  className="w-full min-h-[300px]"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="category">
-                  Category <span className="text-red-500">*</span>
-                </Label>
-                <Select value={formData.category} onValueChange={handleCategoryChange} required>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Featured Image</Label>
-                <ImageUpload onImageUploaded={handleImageUpload} />
-                {formData.imageUrl && (
-                  <div className="mt-2">
-                    <img
-                      src={formData.imageUrl || "/placeholder.svg"}
-                      alt="Featured image preview"
-                      className="h-40 w-full object-cover rounded-md"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end space-x-4 pt-4">
-                <Button type="button" variant="outline" onClick={() => router.push("/blog")}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Publishing...
-                    </>
-                  ) : (
-                    "Publish Post"
-                  )}
-                </Button>
-              </div>
-            </form>
+          <div className="space-y-2">
+            <Label htmlFor="excerpt">Excerpt *</Label>
+            <Textarea
+              id="excerpt"
+              value={excerpt}
+              onChange={(e) => setExcerpt(e.target.value)}
+              placeholder="Write a brief summary (1-2 sentences)"
+              required
+            />
           </div>
-        </div>
-      </Container>
+
+          <div className="space-y-2">
+            <Label htmlFor="category">Category *</Label>
+            <Select value={category} onValueChange={setCategory} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="tags">Tags</Label>
+            <Input
+              id="tags"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="Enter tags separated by commas (e.g., travel, adventure, hiking)"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Featured Image {status === "published" && <span className="text-red-500">*</span>}</Label>
+            <ImageUpload
+              value={imageUrl}
+              onChange={(url) => {
+                console.log("Received image URL:", url) // Log for debugging
+                setImageUrl(url)
+              }}
+              label="Upload Featured Image"
+            />
+            {status === "published" && !imageUrl && (
+              <p className="text-sm text-red-500">A featured image is required for published posts</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="content">Content *</Label>
+            <Textarea
+              id="content"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Write your blog post content here..."
+              className="min-h-[300px]"
+              required
+            />
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Switch id="featured" checked={featured} onCheckedChange={setFeatured} />
+            <Label htmlFor="featured">Feature this post</Label>
+          </div>
+
+          <div className="flex justify-end space-x-4">
+            <Button
+              type="submit"
+              variant="outline"
+              onClick={() => setStatus("draft")}
+              disabled={isSubmitting}
+            >
+              Save as Draft
+            </Button>
+            <Button type="submit" onClick={() => setStatus("published")} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Publishing...
+                </>
+              ) : (
+                "Publish"
+              )}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
-  );
-}
-
-export default function CreateBlogPost() {
-  return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
-      <CreateBlogPostContent />
-    </Suspense>
-  );
+  )
 }

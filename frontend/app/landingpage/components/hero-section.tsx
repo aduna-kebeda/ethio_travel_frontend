@@ -1,29 +1,29 @@
-"use client";
+"use client"
 
-import type React from "react";
+import type React from "react"
 
-import { useState } from "react";
-import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { Search, MapPin } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState } from "react"
+import Image from "next/image"
+import { useRouter } from "next/navigation"
+import { motion } from "framer-motion"
+import { Search, MapPin } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
 export function HeroSection() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("")
+  const router = useRouter()
 
   const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     if (searchQuery.trim()) {
-      router.push(`/destinations?search=${encodeURIComponent(searchQuery)}`);
+      router.push(`/destinations?search=${encodeURIComponent(searchQuery)}`)
     }
-  };
+  }
 
   const handleExploreClick = () => {
-    router.push("/home");
-  };
+    router.push("/home")
+  }
 
   return (
     <section className="py-16 bg-white">
@@ -110,5 +110,5 @@ export function HeroSection() {
         </div>
       </div>
     </section>
-  );
+  )
 }

@@ -1,12 +1,12 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { Container } from "@/components/container";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PenLine, Trash2, Eye, Plus } from "lucide-react";
-import Link from "next/link";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from "react"
+import { Container } from "@/components/container"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { PenLine, Trash2, Eye, Plus } from "lucide-react"
+import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog"
 
 // Mock data - in a real app, this would come from an API call
 const mockPosts = [
@@ -48,35 +48,35 @@ const mockPosts = [
     views: 0,
     comments: 0,
   },
-];
+]
 
 export default function MyBlogPosts() {
-  const { toast } = useToast();
-  const [posts, setPosts] = useState(mockPosts);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [postToDelete, setPostToDelete] = useState<number | null>(null);
+  const { toast } = useToast()
+  const [posts, setPosts] = useState(mockPosts)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [postToDelete, setPostToDelete] = useState<number | null>(null)
 
-  const publishedPosts = posts.filter((post) => post.status === "published");
-  const draftPosts = posts.filter((post) => post.status === "draft");
+  const publishedPosts = posts.filter((post) => post.status === "published")
+  const draftPosts = posts.filter((post) => post.status === "draft")
 
   const handleDeleteClick = (postId: number) => {
-    setPostToDelete(postId);
-    setDeleteDialogOpen(true);
-  };
+    setPostToDelete(postId)
+    setDeleteDialogOpen(true)
+  }
 
   const confirmDelete = () => {
     if (postToDelete !== null) {
-      setPosts((prevPosts) => prevPosts.filter((post) => post.id !== postToDelete));
+      setPosts((prevPosts) => prevPosts.filter((post) => post.id !== postToDelete))
 
       toast({
         title: "Post deleted",
         description: "Your blog post has been deleted successfully.",
-      });
+      })
 
-      setDeleteDialogOpen(false);
-      setPostToDelete(null);
+      setDeleteDialogOpen(false)
+      setPostToDelete(null)
     }
-  };
+  }
 
   const renderPostList = (postList: typeof posts) => {
     if (postList.length === 0) {
@@ -90,7 +90,7 @@ export default function MyBlogPosts() {
             </Link>
           </Button>
         </div>
-      );
+      )
     }
 
     return (
@@ -148,8 +148,8 @@ export default function MyBlogPosts() {
           </div>
         ))}
       </div>
-    );
-  };
+    )
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen py-10">
@@ -196,5 +196,5 @@ export default function MyBlogPosts() {
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 }

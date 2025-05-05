@@ -27,6 +27,9 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  serverActions: {
+    bodySizeLimit: '8mb', // Increase the body size limit to 8MB
+  },
 }
 
 if (userConfig) {

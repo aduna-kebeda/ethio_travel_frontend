@@ -1,130 +1,137 @@
 "use client"
 
+import type React from "react"
+
 import Link from "next/link"
+import { Facebook, Twitter, Instagram, Mail, Phone, MapPin } from "lucide-react"
 import { Logo } from "@/components/logo"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Facebook, Instagram, Twitter } from "lucide-react"
+import { ClientOnly } from "@/components/client-only"
+
+const LinkComponent = ({
+  href,
+  className,
+  children,
+}: { href: string; className?: string; children: React.ReactNode }) => {
+  return (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
+  )
+}
 
 export function Footer() {
+  const currentYear = new Date().getFullYear()
+
   return (
-    <footer className="bg-[#FCE4EC] text-secondary py-12">
-      <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
+    <footer className="bg-[#FCE4EC] text-gray-700 py-12">
+      <div className="container mx-auto px-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-1">
-            <Logo className="mb-4" />
-            <p className="text-sm text-gray-600 mb-4">
-              Discover the beauty and culture of Ethiopia with personalized travel experiences.
-            </p>
-            <div className="flex space-x-4">
-              <Link href="#" className="text-primary hover:text-primary/80">
-                <Facebook size={20} />
-              </Link>
-              <Link href="#" className="text-primary hover:text-primary/80">
-                <Twitter size={20} />
-              </Link>
-              <Link href="#" className="text-primary hover:text-primary/80">
-                <Instagram size={20} />
-              </Link>
+            <Logo />
+            <p className="mt-4 text-sm">Your ultimate guide to traveling in Ethiopia</p>
+            <div className="flex space-x-4 mt-6">
+              <LinkComponent href="#" className="text-primary hover:text-primary/80 transition-colors">
+                <ClientOnly>
+                  <Facebook size={20} />
+                </ClientOnly>
+              </LinkComponent>
+              <LinkComponent href="#" className="text-primary hover:text-primary/80 transition-colors">
+                <ClientOnly>
+                  <Twitter size={20} />
+                </ClientOnly>
+              </LinkComponent>
+              <LinkComponent href="#" className="text-primary hover:text-primary/80 transition-colors">
+                <ClientOnly>
+                  <Instagram size={20} />
+                </ClientOnly>
+              </LinkComponent>
             </div>
           </div>
 
-          <div className="md:col-span-1">
-            <h3 className="font-bold text-sm mb-4">About</h3>
+          <div>
+            <h3 className="font-semibold text-lg mb-4">Quick Links</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/about" className="text-sm text-gray-600 hover:text-primary">
+                <LinkComponent href="/about" className="text-sm hover:text-primary transition-colors">
                   About Us
-                </Link>
+                </LinkComponent>
               </li>
               <li>
-                <Link href="/team" className="text-sm text-gray-600 hover:text-primary">
-                  Our Team
-                </Link>
+                <LinkComponent href="/packages" className="text-sm hover:text-primary transition-colors">
+                  Tour Packages
+                </LinkComponent>
               </li>
               <li>
-                <Link href="/careers" className="text-sm text-gray-600 hover:text-primary">
-                  Careers
-                </Link>
+                <LinkComponent href="/destinations" className="text-sm hover:text-primary transition-colors">
+                  Destinations
+                </LinkComponent>
               </li>
               <li>
-                <Link href="/blog" className="text-sm text-gray-600 hover:text-primary">
+                <LinkComponent href="/blog" className="text-sm hover:text-primary transition-colors">
                   Blog
-                </Link>
+                </LinkComponent>
+              </li>
+              <li>
+                <LinkComponent href="/events" className="text-sm hover:text-primary transition-colors">
+                  Events
+                </LinkComponent>
               </li>
             </ul>
           </div>
 
-          <div className="md:col-span-1">
-            <h3 className="font-bold text-sm mb-4">Company</h3>
+          <div>
+            <h3 className="font-semibold text-lg mb-4">Support</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/partners" className="text-sm text-gray-600 hover:text-primary">
-                  Partners
-                </Link>
-              </li>
-              <li>
-                <Link href="/faq" className="text-sm text-gray-600 hover:text-primary">
+                <LinkComponent href="/faq" className="text-sm hover:text-primary transition-colors">
                   FAQ
-                </Link>
+                </LinkComponent>
               </li>
               <li>
-                <Link href="/terms" className="text-sm text-gray-600 hover:text-primary">
-                  Terms of Service
-                </Link>
+                <LinkComponent href="/terms" className="text-sm hover:text-primary transition-colors">
+                  Terms & Conditions
+                </LinkComponent>
               </li>
               <li>
-                <Link href="/privacy" className="text-sm text-gray-600 hover:text-primary">
+                <LinkComponent href="/privacy" className="text-sm hover:text-primary transition-colors">
                   Privacy Policy
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div className="md:col-span-1">
-            <h3 className="font-bold text-sm mb-4">Support</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/help" className="text-sm text-gray-600 hover:text-primary">
-                  Help Center
-                </Link>
+                </LinkComponent>
               </li>
               <li>
-                <Link href="/contact" className="text-sm text-gray-600 hover:text-primary">
+                <LinkComponent href="/contact" className="text-sm hover:text-primary transition-colors">
                   Contact Us
-                </Link>
-              </li>
-              <li>
-                <Link href="/feedback" className="text-sm text-gray-600 hover:text-primary">
-                  Feedback
-                </Link>
-              </li>
-              <li>
-                <Link href="/community" className="text-sm text-gray-600 hover:text-primary">
-                  Community
-                </Link>
+                </LinkComponent>
               </li>
             </ul>
           </div>
 
-          <div className="md:col-span-1">
-            <h3 className="font-bold text-sm mb-4">Newsletter</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Subscribe to our newsletter for travel updates and special offers.
-            </p>
-            <div className="flex space-x-2">
-              <Input type="email" placeholder="Your email" className="bg-white text-secondary" />
-              <Button size="sm" className="whitespace-nowrap bg-primary text-white hover:bg-primary/80">
-                Subscribe
-              </Button>
-            </div>
+          <div>
+            <h3 className="font-semibold text-lg mb-4">Contact</h3>
+            <ul className="space-y-3">
+              <li className="flex items-start">
+                <ClientOnly>
+                  <MapPin className="h-5 w-5 mr-2 text-primary shrink-0 mt-0.5" />
+                </ClientOnly>
+                <span className="text-sm">123 Addis Ababa, Ethiopia</span>
+              </li>
+              <li className="flex items-center">
+                <ClientOnly>
+                  <Phone className="h-5 w-5 mr-2 text-primary shrink-0" />
+                </ClientOnly>
+                <span className="text-sm">+251 912 345 678</span>
+              </li>
+              <li className="flex items-center">
+                <ClientOnly>
+                  <Mail className="h-5 w-5 mr-2 text-primary shrink-0" />
+                </ClientOnly>
+                <span className="text-sm">info@ethiotravel.com</span>
+              </li>
+            </ul>
           </div>
         </div>
 
-        <div className="border-t border-gray-200 mt-12 pt-6">
-          <p className="text-center text-sm text-gray-600">
-            © {new Date().getFullYear()} EthioTravel. All rights reserved.
-          </p>
+        <div className="border-t border-gray-200 mt-12 pt-8">
+          <p className="text-center text-sm">© {currentYear} EthioTravel. All rights reserved.</p>
         </div>
       </div>
     </footer>

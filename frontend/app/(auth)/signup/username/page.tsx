@@ -3,33 +3,41 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
+import { Loader2 } from "lucide-react"
 import { AuthLayout } from "@/components/auth-layout"
 
-export default function CreateUsernamePage() {
+export default function ChooseUsernamePage() {
+  const router = useRouter()
   const [username, setUsername] = useState("")
-  const [isValid, setIsValid] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
 
-  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setUsername(value)
-    // Simple validation - username must be at least 3 characters
-    setIsValid(value.length >= 3)
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (isValid) {
-      // Handle username creation
-      console.log({ username })
-      // Redirect to next step
+    setIsLoading(true)
+    setError("")
+
+    try {
+      // In a real implementation, you would call an API to update the username
+      // For now, we'll just simulate a delay and redirect
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      // Redirect to interests page
+      router.push("/signup/interests")
+    } catch (error) {
+      console.error("Username update error:", error)
+      setError("Failed to update username. Please try again.")
+      setIsLoading(false)
     }
   }
 
   const handleSkip = () => {
-    // Handle skip logic and redirect to next step
+    router.push("/signup/interests")
   }
 
   return (
@@ -40,40 +48,40 @@ export default function CreateUsernamePage() {
         </div>
 
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">Create username</h2>
-          <p className="mt-2 text-sm text-gray-600">Username can be changed anytime in the profile setting.</p>
+          <h2 className="text-2xl font-bold text-gray-900">Choose a username</h2>
+          <p className="mt-2 text-sm text-gray-600">This will be your public identity on EthioTravel.</p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-6">
-            <div className="relative">
-              <Input
-                id="username"
-                placeholder="@ethiotraveler"
-                value={username}
-                onChange={handleUsernameChange}
-                className="pr-10"
-              />
-              {isValid && (
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3 text-green-500">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-              )}
-            </div>
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">{error}</div>
+        )}
+
+        <form className="space-y-6" onSubmit={handleSubmit}>
+          <div className="space-y-2">
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              placeholder="e.g., traveler123"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              disabled={isLoading}
+            />
           </div>
 
           <div className="flex space-x-4">
-            <Button type="button" variant="outline" className="w-full" onClick={handleSkip}>
+            <Button type="button" variant="outline" className="w-full" onClick={handleSkip} disabled={isLoading}>
               Skip
             </Button>
-            <Button type="submit" className="w-full" disabled={!isValid}>
-              Next
+            <Button type="submit" className="w-full" disabled={isLoading || !username.trim()}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Next"
+              )}
             </Button>
           </div>
         </form>

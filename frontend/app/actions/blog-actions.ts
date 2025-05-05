@@ -1,207 +1,359 @@
-"use server"
+"use server";
 
-// This is a mock implementation. In a real app, this would interact with a database.
+import { cookies } from "next/headers";
+import { getCurrentUser, isAuthenticated } from "@/app/actions/auth-actions";
 
-interface BlogPostData {
-  title: string
-  excerpt: string
-  content: string
-  category: string
-  imageUrl: string
+// API base URL
+const API_BASE_URL = "https://ai-driven-travel.onrender.com";
+
+// Types based on the API response
+export interface Author {
+  id: string;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
 }
 
+export interface BlogPost {
+  id: number;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  category: string;
+  tags: string[];
+  imageUrl: string; // Can be empty string per API
+  author: Author;
+  authorName: string;
+  status: "draft" | "published";
+  views: number;
+  readTime: number;
+  featured: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Comment {
+  id: number;
+  post: number;
+  author: Author;
+  content: string;
+  helpful_count: number;
+  reported: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface BlogPostsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: BlogPost[];
+}
+
+interface CommentsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Comment[];
+}
+
+interface BlogPostData {
+  title: string;
+  excerpt: string;
+  content: string;
+  category: string;
+  tags?: string[];
+  imageUrl?: string;
+  status?: "draft" | "published";
+  readTime?: number;
+  featured?: boolean;
+}
+
+interface CommentData {
+  content: string;
+}
+
+// Helper function to get auth token
+async function getAuthToken() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("access_token")?.value;
+  return token || null;
+}
+
+// Helper function to validate Cloudinary URL
+function validateCloudinaryUrl(url: string): boolean {
+  return url === "" || url.startsWith("https://res.cloudinary.com/");
+}
+
+// Helper function to build headers
+async function buildHeaders(requireAuth: boolean = false): Promise<HeadersInit> {
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+  const token = await getAuthToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  } else if (requireAuth) {
+    throw new Error("Authentication required: No access token found");
+  }
+  return headers;
+}
+
+export async function getBlogPosts(page = 1, search = "", category = "") {
+  try {
+    const params = new URLSearchParams();
+    if (page > 1) params.append("page", page.toString());
+    if (search) params.append("search", search);
+    if (category && category !== "All") params.append("category", category);
+
+    const headers = await buildHeaders();
+    const response = await fetch(`${API_BASE_URL}/api/blog/posts/?${params.toString()}`, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch blog posts: ${response.status}`);
+    }
+
+    const data: BlogPostsResponse = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching blog posts:", error);
+    return { count: 0, next: null, previous: null, results: [] };
+  }
+}
+
+export async function getBlogPost(id: number): Promise<BlogPost | null> {
+  try {
+    const headers = await buildHeaders();
+    const response = await fetch(`${API_BASE_URL}/api/blog/posts/${id}/`, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      throw new Error(`Failed to fetch blog post: ${response.status}`);
+    }
+
+    const data: BlogPost = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching blog post:", error);
+    return null;
+  }
+}
+
+export async function getFeaturedBlogPosts(): Promise<BlogPost[]> {
+  try {
+    const headers = await buildHeaders();
+    const response = await fetch(`${API_BASE_URL}/api/blog/posts/?featured=true`, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch featured blog posts: ${response.status}`);
+    }
+
+    const data: BlogPostsResponse = await response.json();
+    return data.results;
+  } catch (error) {
+    console.error("Error fetching featured blog posts:", error);
+    return [];
+  }
+}
+
+export async function getBlogCategories() {
+  try {
+    const headers = await buildHeaders();
+    const response = await fetch(`${API_BASE_URL}/api/blog/posts/`, {
+      headers,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch blog categories: ${response.status}`);
+    }
+
+    const data: BlogPostsResponse = await response.json();
+    const categoryCounts: { [key: string]: number } = {};
+    data.results.forEach((post) => {
+      const category = post.category || "Uncategorized";
+      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+    });
+
+    return [
+      { name: "All", count: data.results.length },
+      ...Object.entries(categoryCounts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    ];
+  } catch (error) {
+    console.error("Error deriving blog categories:", error);
+    return [];
+  }
+}
+
+// Unchanged createBlogPost per request
 export async function createBlogPost(data: BlogPostData) {
-  // In a real app, this would save the data to a database
-  console.log("Creating blog post:", data)
+  try {
+    // Check authentication
+    const isAuth = await isAuthenticated();
+    if (!isAuth) {
+      throw new Error("You must be logged in to create a blog post");
+    }
 
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+    const user = await getCurrentUser();
+    if (!user) {
+      throw new Error("Unable to retrieve user data");
+    }
 
-  // Return a mock response
-  return {
-    id: Math.floor(Math.random() * 1000),
-    ...data,
-    date: new Date().toISOString(),
-    status: "published",
+    // Validate imageUrl
+    if (data.imageUrl && !validateCloudinaryUrl(data.imageUrl)) {
+      throw new Error("Invalid Cloudinary URL provided");
+    }
+
+    const headers = await buildHeaders(true);
+    const imageUrl = data.imageUrl || "";
+
+    // Prepare request body
+    const requestBody = {
+      ...data,
+      tags: data.tags || [],
+      status: data.status || "draft",
+      readTime: data.readTime || 5,
+      featured: data.featured || false,
+      imageUrl, // Use camelCase for consistency with BlogPost interface
+      author: user.id, // Include author ID
+    };
+
+    console.log("Sending to backend:", requestBody);
+
+    const response = await fetch(`${API_BASE_URL}/api/blog/posts/`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(requestBody),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Failed to create blog post: ${response.status} ${JSON.stringify(errorData)}`);
+    }
+
+    const responseData = await response.json();
+    console.log("Backend response:", responseData);
+    return responseData;
+  } catch (error) {
+    console.error("Error creating blog post:", error);
+    throw error instanceof Error ? error : new Error("An unexpected error occurred");
   }
 }
 
 export async function updateBlogPost(id: number, data: BlogPostData) {
-  // In a real app, this would update the data in a database
-  console.log("Updating blog post:", id, data)
+  try {
+    const isAuth = await isAuthenticated();
+    if (!isAuth) {
+      throw new Error("You must be logged in to update a blog post");
+    }
 
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+    const user = await getCurrentUser();
+    if (!user) {
+      throw new Error("Unable to retrieve user data");
+    }
 
-  // Return a mock response
-  return {
-    id,
-    ...data,
-    date: new Date().toISOString(),
-    status: "published",
+    if (data.imageUrl && !validateCloudinaryUrl(data.imageUrl)) {
+      throw new Error("Invalid Cloudinary URL provided");
+    }
+
+    const headers = await buildHeaders(true);
+    const requestBody = {
+      ...data,
+      tags: data.tags || [],
+      imageUrl: data.imageUrl || "",
+      author: user.id,
+    };
+
+    const response = await fetch(`${API_BASE_URL}/api/blog/posts/${id}/`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(requestBody),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Failed to update blog post: ${response.status} ${JSON.stringify(errorData)}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error updating blog post:", error);
+    throw error;
   }
 }
 
 export async function deleteBlogPost(id: number) {
-  // In a real app, this would delete the post from a database
-  console.log("Deleting blog post:", id)
+  try {
+    const headers = await buildHeaders(true);
+    const response = await fetch(`${API_BASE_URL}/api/blog/posts/${id}/`, {
+      method: "DELETE",
+      headers,
+    });
 
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+    if (!response.ok) {
+      throw new Error(`Failed to delete blog post: ${response.status}`);
+    }
 
-  return { success: true }
-}
-
-export async function getBlogPosts() {
-  // In a real app, this would fetch posts from a database
-
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 1000))
-
-  // Return mock data
-  return [
-    {
-      id: 1,
-      title: "My Journey Through the Simien Mountains",
-      excerpt: "A personal account of trekking through Ethiopia's breathtaking mountain range.",
-      image: "/placeholder.svg?height=300&width=500&text=Simien+Mountains",
-      date: "March 15, 2023",
-      status: "published",
-      views: 245,
-      comments: 12,
-      author: {
-        name: "John Doe",
-        image: "/placeholder.svg?height=40&width=40",
-      },
-      category: "Adventure",
-      readTime: "8 min read",
-    },
-    {
-      id: 2,
-      title: "The Coffee Ceremony: Ethiopia's Cultural Treasure",
-      excerpt: "Exploring the traditions and significance of Ethiopia's famous coffee ceremony.",
-      image: "/placeholder.svg?height=300&width=500&text=Coffee+Ceremony",
-      date: "April 2, 2023",
-      status: "published",
-      views: 189,
-      comments: 8,
-      author: {
-        name: "Sarah Johnson",
-        image: "/placeholder.svg?height=40&width=40",
-      },
-      category: "Culture",
-      readTime: "6 min read",
-    },
-    {
-      id: 3,
-      title: "Hidden Gems of Addis Ababa",
-      excerpt: "Discovering the lesser-known attractions in Ethiopia's vibrant capital city.",
-      image: "/placeholder.svg?height=300&width=500&text=Addis+Ababa",
-      date: "May 10, 2023",
-      status: "draft",
-      views: 0,
-      comments: 0,
-      author: {
-        name: "Michael Brown",
-        image: "/placeholder.svg?height=40&width=40",
-      },
-      category: "Travel",
-      readTime: "5 min read",
-    },
-  ]
-}
-
-export async function getBlogPost(id: number) {
-  // In a real app, this would fetch a specific post from a database
-
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 1000))
-
-  // Return mock data
-  return {
-    id: id,
-    title: "My Journey Through the Simien Mountains",
-    excerpt: "A personal account of trekking through Ethiopia's breathtaking mountain range.",
-    content:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod, nisl eget aliquam ultricies, nunc nisl aliquet nunc, quis aliquam nisl nunc, quis nisl. Nullam euismod, nisl eget aliquam ultricies, nunc nisl aliquet nunc, quis aliquam nisl nunc quis nisl. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod, nisl eget aliquam ultricies, nunc nisl aliquet nunc, quis aliquam nisl nunc quis nisl. Nullam euismod, nisl eget aliquam ultricies, nunc nisl aliquet nunc, quis aliquam nisl nunc quis nisl.",
-    category: "adventure",
-    imageUrl: "/placeholder.svg?height=300&width=500&text=Simien+Mountains",
-    date: "March 15, 2023",
-    status: "published",
-    views: 245,
-    comments: 12,
-    author: {
-      name: "John Doe",
-      image: "/placeholder.svg?height=40&width=40",
-    },
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting blog post:", error);
+    throw error;
   }
 }
 
-export async function getFeaturedBlogPosts() {
-  // In a real app, this would fetch featured posts from a database
+export async function addComment(postId: number, content: string): Promise<Comment> {
+  try {
+    const headers = await buildHeaders(true);
+    const response = await fetch(`${API_BASE_URL}/api/blog/posts/${postId}/comments/`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ content }), // API only needs content
+    });
 
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+    if (!response.ok) {
+      throw new Error(`Failed to add comment: ${response.status}`);
+    }
 
-  // Return mock data
-  return [
-    {
-      id: 1,
-      title: "The impact of Timket or epiphany holiday in shaping ethiopian economy",
-      excerpt:
-        "Exploring Ethiopia's rich tapestry of traditions and festivals, we delve into the profound impact of Timket on the country's cultural heritage and economic landscape.",
-      image: "/assets/timket.jpg",
-      date: "January 15, 2023",
-      author: {
-        name: "Abebe Kebede",
-        image: "/placeholder.svg?height=40&width=40",
-      },
-      category: "Culture",
-      readTime: "8 min read",
-    },
-    {
-      id: 2,
-      title: "The adventurous and diverse side of Ethiopia in the Eyes of Tourists",
-      excerpt: "Discover how international visitors perceive Ethiopia's natural wonders and cultural treasures.",
-      image: "/placeholder.svg?height=300&width=500&text=Ethiopia+Landscape",
-      date: "February 10, 2023",
-      author: {
-        name: "Tigist Haile",
-        image: "/placeholder.svg?height=40&width=40",
-      },
-      category: "Travel",
-      readTime: "6 min read",
-    },
-    {
-      id: 3,
-      title: "The Impact of Technology on the Ethiopian Tourism - How Technology is Changing",
-      excerpt: "Exploring how digital innovations are transforming the way travelers experience Ethiopia.",
-      image: "/placeholder.svg?height=300&width=500&text=Tech+Tourism",
-      date: "March 5, 2023",
-      author: {
-        name: "Daniel Mekonnen",
-        image: "/placeholder.svg?height=40&width=40",
-      },
-      category: "Technology",
-      readTime: "5 min read",
-    },
-  ]
+    return await response.json();
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    throw error;
+  }
 }
 
-export async function getBlogCategories() {
-  // In a real app, this would fetch categories from a database
+export async function getComments(postId: number): Promise<Comment[]> {
+  try {
+    const headers = await buildHeaders();
+    const response = await fetch(`${API_BASE_URL}/api/blog/posts/${postId}/comments/`, {
+      headers,
+      cache: "no-store",
+    });
 
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+    if (!response.ok) {
+      if (response.status === 404) return [];
+      throw new Error(`Failed to fetch comments: ${response.status}`);
+    }
 
-  // Return mock data
-  return [
-    { name: "All", count: 42 },
-    { name: "Culture", count: 24 },
-    { name: "Travel", count: 18 },
-    { name: "Technology", count: 15 },
-    { name: "Food", count: 12 },
-    { name: "History", count: 9 },
-    { name: "Adventure", count: 7 },
-  ]
+    const data: CommentsResponse = await response.json();
+    return data.results || [];
+  } catch (error) {
+    console.error("Error fetching comments:", error);
+    return [];
+  }
 }

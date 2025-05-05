@@ -1,31 +1,31 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { SearchModal } from "@/components/search-modal";
-import { Search } from "lucide-react";
-import { motion } from "framer-motion";
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { SearchModal } from "@/components/search-modal"
+import { Search } from "lucide-react"
+import { motion } from "framer-motion"
 
 export const HeroSection = () => {
-  const router = useRouter();
-  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
-  const [destination, setDestination] = useState("");
-  const [travelType, setTravelType] = useState("Any");
-  const [duration, setDuration] = useState("Any");
+  const router = useRouter()
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
+  const [destination, setDestination] = useState("")
+  const [travelType, setTravelType] = useState("Any")
+  const [duration, setDuration] = useState("Any")
 
   const handleSearch = () => {
     // If destination is provided, navigate to search results
     if (destination.trim()) {
       router.push(
         `/packages?search=${encodeURIComponent(destination)}&type=${encodeURIComponent(
-          travelType
-        )}&duration=${encodeURIComponent(duration)}`
-      );
+          travelType,
+        )}&duration=${encodeURIComponent(duration)}`,
+      )
     } else {
       // Otherwise open the search modal for more options
-      setIsSearchModalOpen(true);
+      setIsSearchModalOpen(true)
     }
-  };
+  }
 
   return (
     <section
@@ -182,5 +182,5 @@ export const HeroSection = () => {
         initialDuration={duration}
       />
     </section>
-  );
-};
+  )
+}

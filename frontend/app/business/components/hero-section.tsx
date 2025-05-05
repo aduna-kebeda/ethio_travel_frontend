@@ -9,13 +9,7 @@ export function HeroSection() {
     <div className="relative w-full h-[500px] overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0">
-        <Image
-          src="/assets/bishoftu.jpg"
-          alt="Ethiopian Businesses"
-          fill
-          className="object-cover"
-          priority
-        />
+        <Image src="/assets/bishoftu.jpg" alt="Ethiopian Businesses" fill className="object-cover" priority />
         {/* Dark Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/70" />
 

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { MessageSquare, Send, X, Minimize2, Maximize2, Cloud, Calendar, User } from "lucide-react"
 import { Avatar } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { ClientOnly } from "@/components/client-only"
 
 // Message types
 type MessageType = "text" | "weather" | "alert" | "itinerary" | "loading" | "options"
@@ -534,168 +535,173 @@ export function Chatbot() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
-      {isOpen && (
-        <div
-          className={`bg-white rounded-lg shadow-xl overflow-hidden transition-all duration-300 ease-in-out ${
-            isMinimized ? "w-72 h-16" : "w-80 sm:w-96 h-[calc(100vh-120px)] max-h-[600px]"
-          }`}
-          style={{ maxHeight: isMinimized ? "64px" : "calc(100vh - 120px)" }}
-        >
-          <div className="bg-primary text-white p-4 flex items-center justify-between">
-            <div className="flex items-center">
-              <MessageSquare className="h-5 w-5 mr-2" />
-              <h3 className="font-bold">Travel Assistant</h3>
-              {isHumanRequested && (
-                <Badge variant="secondary" className="ml-2 bg-white/20 text-white">
-                  Human Support
-                </Badge>
-              )}
+    <ClientOnly>
+      <div className="fixed bottom-6 right-6 z-50">
+        {isOpen && (
+          <div
+            className={`bg-white rounded-lg shadow-xl overflow-hidden transition-all duration-300 ease-in-out ${
+              isMinimized ? "w-72 h-16" : "w-80 sm:w-96 h-[calc(100vh-120px)] max-h-[600px]"
+            }`}
+            style={{ maxHeight: isMinimized ? "64px" : "calc(100vh - 120px)" }}
+          >
+            <div className="bg-primary text-white p-4 flex items-center justify-between">
+              <div className="flex items-center">
+                <MessageSquare className="h-5 w-5 mr-2" />
+                <h3 className="font-bold">Travel Assistant</h3>
+                {isHumanRequested && (
+                  <Badge variant="secondary" className="ml-2 bg-white/20 text-white">
+                    Human Support
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={toggleMinimize}
+                  className="text-white hover:text-gray-200 bg-white/10 rounded-full p-1"
+                >
+                  {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+                </button>
+                <button onClick={toggleChat} className="text-white hover:text-gray-200 bg-white/10 rounded-full p-1">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center space-x-3">
-              <button onClick={toggleMinimize} className="text-white hover:text-gray-200 bg-white/10 rounded-full p-1">
-                {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
-              </button>
-              <button onClick={toggleChat} className="text-white hover:text-gray-200 bg-white/10 rounded-full p-1">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
 
-          {!isMinimized && (
-            <>
-              <div className="p-4 overflow-y-auto bg-gray-50" style={{ height: "calc(100% - 140px)" }}>
-                {messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`mb-4 ${
-                      msg.sender === "user" ? "text-right" : msg.sender === "system" ? "text-center" : "text-left"
-                    }`}
-                  >
-                    {msg.sender === "system" ? (
-                      <div className="inline-block bg-white rounded-lg px-4 py-2 max-w-[80%] text-gray-500 text-xs shadow-sm">
-                        {msg.content}
-                      </div>
-                    ) : (
-                      <div className="flex items-start gap-2 max-w-[80%] mx-0 mb-1 w-full">
-                        {msg.sender === "bot" && (
-                          <Avatar className="h-8 w-8 bg-primary text-white shadow-sm">
-                            {isHumanRequested ? <User className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
-                          </Avatar>
-                        )}
-                        <div
-                          className={`rounded-lg px-4 py-2 shadow-sm ${
-                            msg.sender === "user" ? "bg-primary text-white ml-auto" : "bg-white text-gray-800"
-                          }`}
-                        >
-                          {renderMessageContent(msg)}
-                          <p className="text-xs mt-1 opacity-70 text-right">
-                            {msg.timestamp.toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </p>
+            {!isMinimized && (
+              <>
+                <div className="p-4 overflow-y-auto bg-gray-50" style={{ height: "calc(100% - 140px)" }}>
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`mb-4 ${
+                        msg.sender === "user" ? "text-right" : msg.sender === "system" ? "text-center" : "text-left"
+                      }`}
+                    >
+                      {msg.sender === "system" ? (
+                        <div className="inline-block bg-white rounded-lg px-4 py-2 max-w-[80%] text-gray-500 text-xs shadow-sm">
+                          {msg.content}
                         </div>
-                        {msg.sender === "user" && (
-                          <Avatar className="h-8 w-8 bg-gray-300 shadow-sm">
-                            <User className="h-4 w-4" />
-                          </Avatar>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {isTyping && (
-                  <div className="flex items-center space-x-2 text-left">
-                    <Avatar className="h-8 w-8 bg-primary text-white shadow-sm">
-                      {isHumanRequested ? <User className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
-                    </Avatar>
-                    <div className="bg-white text-gray-800 rounded-lg px-4 py-2 shadow-sm">
-                      <div className="flex space-x-1">
-                        <div
-                          className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "0ms" }}
-                        ></div>
-                        <div
-                          className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "300ms" }}
-                        ></div>
-                        <div
-                          className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "600ms" }}
-                        ></div>
+                      ) : (
+                        <div className="flex items-start gap-2 max-w-[80%] mx-0 mb-1 w-full">
+                          {msg.sender === "bot" && (
+                            <Avatar className="h-8 w-8 bg-primary text-white shadow-sm">
+                              {isHumanRequested ? <User className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
+                            </Avatar>
+                          )}
+                          <div
+                            className={`rounded-lg px-4 py-2 shadow-sm ${
+                              msg.sender === "user" ? "bg-primary text-white ml-auto" : "bg-white text-gray-800"
+                            }`}
+                          >
+                            {renderMessageContent(msg)}
+                            <p className="text-xs mt-1 opacity-70 text-right">
+                              {msg.timestamp.toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                          {msg.sender === "user" && (
+                            <Avatar className="h-8 w-8 bg-gray-300 shadow-sm">
+                              <User className="h-4 w-4" />
+                            </Avatar>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {isTyping && (
+                    <div className="flex items-center space-x-2 text-left">
+                      <Avatar className="h-8 w-8 bg-primary text-white shadow-sm">
+                        {isHumanRequested ? <User className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
+                      </Avatar>
+                      <div className="bg-white text-gray-800 rounded-lg px-4 py-2 shadow-sm">
+                        <div className="flex space-x-1">
+                          <div
+                            className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"
+                            style={{ animationDelay: "0ms" }}
+                          ></div>
+                          <div
+                            className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"
+                            style={{ animationDelay: "300ms" }}
+                          ></div>
+                          <div
+                            className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"
+                            style={{ animationDelay: "600ms" }}
+                          ></div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-
-              <div className="border-t p-4 bg-white">
-                <div className="flex items-center">
-                  <Input
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Type your message..."
-                    className="flex-grow shadow-sm"
-                  />
-                  <Button onClick={handleSendMessage} className="ml-2" size="icon" disabled={message.trim() === ""}>
-                    <Send className="h-4 w-4" />
-                  </Button>
+                  )}
+                  <div ref={messagesEndRef} />
                 </div>
-                {!isHumanRequested && (
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs justify-start"
-                      onClick={() => handleQuickReplyClick("faq-visa")}
-                    >
-                      <span className="truncate">Visa Requirements</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs justify-start"
-                      onClick={() => handleQuickReplyClick("weather-check")}
-                    >
-                      <span className="truncate">Check Weather</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs justify-start"
-                      onClick={() => handleQuickReplyClick("itinerary-view")}
-                    >
-                      <span className="truncate">View Itinerary</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs justify-start text-red-500"
-                      onClick={() => handleQuickReplyClick("human-agent")}
-                    >
-                      <span className="truncate">Human Support</span>
+
+                <div className="border-t p-4 bg-white">
+                  <div className="flex items-center">
+                    <Input
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Type your message..."
+                      className="flex-grow shadow-sm"
+                    />
+                    <Button onClick={handleSendMessage} className="ml-2" size="icon" disabled={message.trim() === ""}>
+                      <Send className="h-4 w-4" />
                     </Button>
                   </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      )}
+                  {!isHumanRequested && (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs justify-start"
+                        onClick={() => handleQuickReplyClick("faq-visa")}
+                      >
+                        <span className="truncate">Visa Requirements</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs justify-start"
+                        onClick={() => handleQuickReplyClick("weather-check")}
+                      >
+                        <span className="truncate">Check Weather</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs justify-start"
+                        onClick={() => handleQuickReplyClick("itinerary-view")}
+                      >
+                        <span className="truncate">View Itinerary</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs justify-start text-red-500"
+                        onClick={() => handleQuickReplyClick("human-agent")}
+                      >
+                        <span className="truncate">Human Support</span>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
-      {!isOpen && (
-        <Button
-          onClick={toggleChat}
-          className="rounded-full h-16 w-16 shadow-xl flex items-center justify-center bg-primary hover:bg-primary/90 animate-pulse"
-          size="icon"
-        >
-          <MessageSquare className="h-7 w-7" />
-          <span className="absolute top-0 right-0 h-3 w-3 bg-green-500 rounded-full"></span>
-        </Button>
-      )}
-    </div>
+        {!isOpen && (
+          <Button
+            onClick={toggleChat}
+            className="rounded-full h-16 w-16 shadow-xl flex items-center justify-center bg-primary hover:bg-primary/90 animate-pulse"
+            size="icon"
+          >
+            <MessageSquare className="h-7 w-7" />
+            <span className="absolute top-0 right-0 h-3 w-3 bg-green-500 rounded-full"></span>
+          </Button>
+        )}
+      </div>
+    </ClientOnly>
   )
 }

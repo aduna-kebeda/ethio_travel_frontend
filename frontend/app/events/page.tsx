@@ -333,8 +333,6 @@ export default function EventsPage() {
     return () => clearTimeout(timer)
   }, [])
 
-  
-
   // Get featured events
   const featuredEvents = events.filter((event) => event.featured)
 
@@ -371,7 +369,6 @@ export default function EventsPage() {
     }
   }
 
-  
   const resetFilters = () => {
     setSearchTerm("")
     setSelectedCategory("All")

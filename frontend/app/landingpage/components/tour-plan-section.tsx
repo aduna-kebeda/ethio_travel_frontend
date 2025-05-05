@@ -1,14 +1,14 @@
-"use client";
+"use client"
 
-import Image from "next/image";
-import { motion } from "framer-motion";
-import { useInView } from "react-intersection-observer";
+import Image from "next/image"
+import { motion } from "framer-motion"
+import { useInView } from "react-intersection-observer"
 
 export function TourPlanSection() {
   const [ref, inView] = useInView({
     triggerOnce: true,
     threshold: 0.1,
-  });
+  })
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -18,7 +18,7 @@ export function TourPlanSection() {
         staggerChildren: 0.2,
       },
     },
-  };
+  }
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
@@ -27,7 +27,7 @@ export function TourPlanSection() {
       opacity: 1,
       transition: { duration: 0.5 },
     },
-  };
+  }
 
   return (
     <section className="py-16 bg-white">
@@ -121,5 +121,5 @@ export function TourPlanSection() {
         </motion.div>
       </div>
     </section>
-  );
+  )
 }

@@ -1,61 +1,75 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import Link from "next/link"
 import { PostCard } from "./post-card"
-import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { ClientOnly } from "@/components/client-only"
 
-interface BlogPost {
-  id: number
+interface Author {
+  name: string
+  image: string
+}
+
+interface Post {
+  id: number | string
   title: string
   excerpt: string
   image: string
   date: string
-  author: {
-    name: string
-    image: string
-  }
-  category: string
+  author: Author
+  category?: string
   readTime: string
 }
 
 interface LatestPostsProps {
-  posts: BlogPost[]
+  posts: Post[]
 }
 
-export const LatestPosts = ({ posts }: LatestPostsProps) => {
-  const [visiblePosts, setVisiblePosts] = useState(3)
-
-  const loadMore = () => {
-    setVisiblePosts((prev) => Math.min(prev + 3, posts.length))
+export function LatestPosts({ posts }: LatestPostsProps) {
+  if (!posts || posts.length === 0) {
+    return null
   }
 
+  // Process posts to ensure consistent data structure for PostCard
+  const processedPosts = posts.map((post) => ({
+    id: post.id.toString(),
+    title: post.title,
+    content: post.excerpt,
+    imageUrl: post.image,
+    category: post.category,
+    tags: [],
+    authorName: post.author.name,
+    authorImage: post.author.image,
+    createdAt: post.date,
+    commentsCount: 0,
+    likesCount: 0,
+    readTime: Number.parseInt(post.readTime.split(" ")[0]) || 5,
+  }))
+
   return (
-    <section className="py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Latest Articles</h2>
-        <div className="hidden md:flex items-center space-x-2">
-          <span className="h-1 w-10 bg-primary rounded-full"></span>
-          <span className="h-1 w-20 bg-gray-200 rounded-full"></span>
+    <ClientOnly>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Latest Posts</h2>
+          <Link href="/blog/latest" className="text-primary hover:underline text-sm font-medium">
+            View all
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {processedPosts.map((post) => (
+            <PostCard key={post.id} post={post} />
+          ))}
+        </div>
+
+        <div className="flex justify-center mt-8">
+          <Link href="/blog/latest">
+            <Button variant="outline" className="rounded-full px-8">
+              Load More
+            </Button>
+          </Link>
         </div>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {posts.slice(0, visiblePosts).map((post) => (
-          <PostCard key={post.id} post={post} />
-        ))}
-      </div>
-
-      {visiblePosts < posts.length && (
-        <div className="mt-8 text-center">
-          <Button
-            onClick={loadMore}
-            variant="outline"
-            className="rounded-full px-6 border-2 hover:bg-gray-50 transition-all duration-300"
-          >
-            Load More Articles
-          </Button>
-        </div>
-      )}
-    </section>
+    </ClientOnly>
   )
 }

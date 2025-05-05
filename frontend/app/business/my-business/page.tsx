@@ -1,12 +1,12 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import Link from "next/link";
-import { Container } from "@/components/container";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useState } from "react"
+import Link from "next/link"
+import { Container } from "@/components/container"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +14,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,8 +25,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { CheckCircle, Clock, Edit, Eye, MoreVertical, PlusCircle, Trash2, XCircle } from "lucide-react";
+} from "@/components/ui/alert-dialog"
+import { CheckCircle, Clock, Edit, Eye, MoreVertical, PlusCircle, Trash2, XCircle } from "lucide-react"
 
 export default function MyBusinessPage() {
   // Mock data - in a real app, this would come from an API
@@ -54,11 +54,11 @@ export default function MyBusinessPage() {
       status: "approved",
       createdAt: "2023-09-05",
     },
-  ]);
+  ])
 
   const handleDelete = (id: string) => {
-    setMyBusinesses((prev) => prev.filter((business) => business.id !== id));
-  };
+    setMyBusinesses((prev) => prev.filter((business) => business.id !== id))
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -68,7 +68,7 @@ export default function MyBusinessPage() {
             <CheckCircle className="h-3 w-3" />
             Verified
           </Badge>
-        );
+        )
       case "pending":
         return (
           <Badge
@@ -78,7 +78,7 @@ export default function MyBusinessPage() {
             <Clock className="h-3 w-3" />
             Pending
           </Badge>
-        );
+        )
       case "rejected":
         return (
           <Badge
@@ -88,16 +88,16 @@ export default function MyBusinessPage() {
             <XCircle className="h-3 w-3" />
             Rejected
           </Badge>
-        );
+        )
       default:
-        return null;
+        return null
     }
-  };
+  }
 
   const renderRejectedListings = () => {
-    const rejectedBusinesses = myBusinesses.filter((b) => b.status === "rejected");
+    const rejectedBusinesses = myBusinesses.filter((b) => b.status === "rejected")
 
-    if (rejectedBusinesses.length === 0) return null;
+    if (rejectedBusinesses.length === 0) return null
 
     return (
       <Card className="mt-6 border-red-100">
@@ -124,8 +124,8 @@ export default function MyBusinessPage() {
           ))}
         </CardContent>
       </Card>
-    );
-  };
+    )
+  }
 
   return (
     <Container className="py-10">
@@ -242,5 +242,5 @@ export default function MyBusinessPage() {
         {renderRejectedListings()}
       </div>
     </Container>
-  );
+  )
 }

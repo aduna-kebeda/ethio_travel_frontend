@@ -17,12 +17,7 @@ export const HolidayBanner = () => {
       onClick={handleBannerClick}
     >
       <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.5 }}>
-        <NextImage
-          src="/assets/irecha2.jpg"
-          alt="Ethiopian Woman"
-          fill
-          className="object-cover"
-        />
+        <NextImage src="/assets/irecha2.jpg" alt="Ethiopian Woman" fill className="object-cover" />
       </motion.div>
       <div className="absolute inset-0 bg-black/30 hover:bg-black/40 transition-colors duration-300"></div>
       <motion.div

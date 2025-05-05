@@ -39,7 +39,9 @@ export default function AboutPage() {
                   </Link>
                 </div>
                 <div className="md:w-1/2 md:pl-12 relative">
-                  <div className="rounded-full overflow-hidden w-64 h-64 mx-auto flex items-center justify-center"> {/* Added flex properties */}
+                  <div className="rounded-full overflow-hidden w-64 h-64 mx-auto flex items-center justify-center">
+                    {" "}
+                    {/* Added flex properties */}
                     <Image
                       src="/assets/langano3.jpg"
                       alt="Ethiopian Woman"
@@ -57,12 +59,7 @@ export default function AboutPage() {
           <section className="py-16 bg-gray-50">
             <div className="container mx-auto px-4">
               <div className="relative h-[400px] rounded-lg overflow-hidden">
-                <Image
-                  src="/assets/travel2.jpg"
-                  alt="Ethiopia Landscape"
-                  fill
-                  className="object-cover"
-                />
+                <Image src="/assets/travel2.jpg" alt="Ethiopia Landscape" fill className="object-cover" />
                 <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                   <div className="text-center">
                     <h2 className="text-4xl font-bold text-white italic mb-4">want to discover</h2>

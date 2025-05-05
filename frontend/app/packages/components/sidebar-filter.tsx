@@ -185,7 +185,10 @@ export function SidebarFilter({
         </div>
 
         <div className="space-y-3">
-          <Button type="submit" className="w-full rounded-full bg-[#E91E63] hover:bg-[#D81B60] text-white transition-colors">
+          <Button
+            type="submit"
+            className="w-full rounded-full bg-[#E91E63] hover:bg-[#D81B60] text-white transition-colors"
+          >
             Search
           </Button>
 

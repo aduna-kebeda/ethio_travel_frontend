@@ -1,9 +1,19 @@
 import { NextResponse } from "next/server"
-import { getBusinessById } from "@/app/actions/business-actions"
+import { fetchBusinessById, getBusinessById } from "@/app/actions/business-actions"
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     const id = params.id
+
+    // Try to get from API first
+    const apiResult = await fetchBusinessById(id)
+
+    // If API call succeeds, return the data
+    if (apiResult.success) {
+      return NextResponse.json(apiResult.data)
+    }
+
+    // Otherwise, fall back to mock data
     const business = await getBusinessById(id)
 
     if (!business) {

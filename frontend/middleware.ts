@@ -1,59 +1,50 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { getToken } from "next-auth/jwt"
 
-// Define paths that should be excluded from middleware processing
-const excludedPaths = ["/api/auth", "/_next", "/favicon.ico", "/images"]
+export function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
+  // Define paths that require authentication
+  const protectedPaths = [
+    "/profile",
+    "/business/my-business",
+    "/business/register",
+    "/business/edit",
+    "/blog/create",
+    "/blog/edit",
+    "/blog/my-posts",
+    "/settings",
+  ]
 
-  // Skip middleware for excluded paths
-  if (excludedPaths.some((path) => pathname.startsWith(path))) {
-    return NextResponse.next()
+  // Check if the current path is protected
+  const isProtectedPath = protectedPaths.some((prefix) => path.startsWith(prefix))
+
+  // Get the token from cookies
+  const token = request.cookies.get("access_token")?.value
+
+  // If the path requires authentication and there's no token, redirect to login
+  if (isProtectedPath && !token) {
+    return NextResponse.redirect(new URL(`/login?redirect=${encodeURIComponent(path)}`, request.url))
   }
 
-  try {
-    // Get the token with the secret
-    const token = await getToken({
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET,
-    })
-
-    const isAuthenticated = !!token
-
-    // Define protected routes
-    const protectedRoutes = ["/profile", "/itinerary"]
-
-    // Define auth routes
-    const authRoutes = ["/login", "/signup", "/forgot-password", "/reset-password", "/verify-code"]
-
-    // Check if current path is protected
-    const isProtectedRoute = protectedRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))
-
-    // Check if current path is an auth route
-    const isAuthRoute = authRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))
-
-    // Redirect logic
-    if (isProtectedRoute && !isAuthenticated) {
-      return NextResponse.redirect(new URL("/login", request.url))
-    }
-
-    if (isAuthRoute && isAuthenticated) {
-      return NextResponse.redirect(new URL("/", request.url))
-    }
-  } catch (error) {
-    console.error("Middleware error:", error)
-    // Continue to the page even if there's an error
+  // If the user is authenticated and trying to access login/signup pages, redirect to home
+  if (token && (path === "/login" || path === "/signup")) {
+    return NextResponse.redirect(new URL("/home", request.url))
   }
 
   return NextResponse.next()
 }
 
-// Configure middleware to run on all paths except excluded ones
+// See "Matching Paths" below to learn more
 export const config = {
   matcher: [
-    // Match all paths except excluded ones
-    "/((?!api/auth|_next|favicon.ico).*)",
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - api (API routes)
+     */
+    "/((?!_next/static|_next/image|favicon.ico|api).*)",
   ],
 }

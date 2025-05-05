@@ -6,11 +6,7 @@ interface AuthLayoutProps {
   imageSrc?: string
 }
 
-export function AuthLayout({
-  children,
-  imagePosition = "right",
-  imageSrc = "/assets/langano3.jpg",
-}: AuthLayoutProps) {
+export function AuthLayout({ children, imagePosition = "right", imageSrc = "/assets/langano3.jpg" }: AuthLayoutProps) {
   return (
     <div className="grid min-h-screen md:grid-cols-2">
       {imagePosition === "left" && (

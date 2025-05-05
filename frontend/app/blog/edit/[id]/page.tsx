@@ -10,10 +10,10 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { updateBlogPost } from "@/app/actions/blog-actions"
-import { ImageUpload } from "../../components/image-upload"
+import { updateBlogPost, getBlogPost } from "@/app/actions/blog-actions"
+import ImageUpload from "../../components/image-upload"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, ArrowLeft } from "lucide-react"
+import { Loader2, ArrowLeft, Tag } from "lucide-react"
 import Link from "next/link"
 
 const categories = [
@@ -24,19 +24,6 @@ const categories = [
   { id: "history", name: "History" },
   { id: "adventure", name: "Adventure" },
 ]
-
-// Mock data - in a real app, this would come from an API call
-const mockPost = {
-  id: 1,
-  title: "My Journey Through the Simien Mountains",
-  excerpt: "A personal account of trekking through Ethiopia's breathtaking mountain range.",
-  content:
-    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod, nisl eget aliquam ultricies, nunc nisl aliquet nunc, quis aliquam nisl nunc quis nisl. Nullam euismod, nisl eget aliquam ultricies, nunc nisl aliquet nunc, quis aliquam nisl nunc quis nisl. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod, nisl eget aliquam ultricies, nunc nisl aliquet nunc, quis aliquam nisl nunc quis nisl. Nullam euismod, nisl eget aliquam ultricies, nunc nisl aliquet nunc, quis aliquam nisl nunc quis nisl.",
-  category: "adventure",
-  imageUrl: "/placeholder.svg?height=300&width=500&text=Simien+Mountains",
-  date: "March 15, 2023",
-  status: "published",
-}
 
 export default function EditBlogPost({ params }: { params: { id: string } }) {
   const router = useRouter()
@@ -51,19 +38,40 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
     content: "",
     category: "",
     imageUrl: "",
+    tags: [] as string[],
   })
+  const [tagInput, setTagInput] = useState("")
+  const [imageUrl, setImageUrl] = useState<string>("")
 
   useEffect(() => {
-    // In a real app, this would fetch the post data from an API
-    setFormData({
-      title: mockPost.title,
-      excerpt: mockPost.excerpt,
-      content: mockPost.content,
-      category: mockPost.category,
-      imageUrl: mockPost.imageUrl,
-    })
-    setIsLoading(false)
-  }, [postId])
+    const fetchPost = async () => {
+      try {
+        setIsLoading(true)
+        const post = await getBlogPost(postId)
+
+        setFormData({
+          title: post.title,
+          excerpt: post.excerpt,
+          content: post.content,
+          category: post.category,
+          imageUrl: post.imageUrl,
+          tags: post.tags || [],
+        })
+        setImageUrl(post.imageUrl)
+      } catch (error) {
+        console.error("Error fetching post:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load blog post. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchPost()
+  }, [postId, toast])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -76,6 +84,23 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
 
   const handleImageUpload = (url: string) => {
     setFormData((prev) => ({ ...prev, imageUrl: url }))
+  }
+
+  const handleAddTag = () => {
+    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
+      setFormData((prev) => ({
+        ...prev,
+        tags: [...prev.tags, tagInput.trim()],
+      }))
+      setTagInput("")
+    }
+  }
+
+  const handleRemoveTag = (tag: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      tags: prev.tags.filter((t) => t !== tag),
+    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -93,8 +118,20 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
     try {
       setIsSubmitting(true)
 
-      // In a real implementation, this would call a server action to update the post
-      await updateBlogPost(postId, formData)
+      // Log the data being sent to the backend
+      console.log("Updating blog post data:", {
+        id: postId,
+        ...formData,
+      })
+
+      await updateBlogPost(postId, {
+        title: formData.title,
+        excerpt: formData.excerpt,
+        content: formData.content,
+        category: formData.category,
+        tags: formData.tags,
+        imageUrl: imageUrl, // This should be the Cloudinary URL
+      })
 
       toast({
         title: "Success!",
@@ -103,9 +140,10 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
 
       router.push("/blog/my-posts")
     } catch (error) {
+      console.error("Error updating post:", error)
       toast({
         title: "Error",
-        description: "Failed to update your blog post. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to update your blog post. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -198,12 +236,61 @@ export default function EditBlogPost({ params }: { params: { id: string } }) {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="tags">Tags</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="tagInput"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    placeholder="Add tags (press Enter to add)"
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                        handleAddTag()
+                      }
+                    }}
+                  />
+                  <Button type="button" onClick={handleAddTag} variant="outline">
+                    <Tag className="h-4 w-4 mr-2" />
+                    Add
+                  </Button>
+                </div>
+                {formData.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {formData.tags.map((tag) => (
+                      <div
+                        key={tag}
+                        className="bg-gray-100 text-gray-800 text-sm px-3 py-1 rounded-full flex items-center"
+                      >
+                        {tag}
+                        <button
+                          type="button"
+                          className="ml-2 text-gray-500 hover:text-gray-700"
+                          onClick={() => handleRemoveTag(tag)}
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
                 <Label>Featured Image</Label>
-                <ImageUpload onImageUploaded={handleImageUpload} currentImage={formData.imageUrl} />
-                {formData.imageUrl && (
+                <ImageUpload
+                  value={imageUrl}
+                  onChange={(url) => {
+                    console.log("Image uploaded to Cloudinary:", url)
+                    setImageUrl(url)
+                  }}
+                  label="Upload Featured Image"
+                />
+                {imageUrl && (
                   <div className="mt-2">
                     <img
-                      src={formData.imageUrl || "/placeholder.svg"}
+                      src={imageUrl || "/placeholder.svg"}
                       alt="Featured image preview"
                       className="h-40 w-full object-cover rounded-md"
                     />
