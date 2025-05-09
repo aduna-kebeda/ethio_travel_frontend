@@ -1,9 +1,7 @@
-from rest_framework import viewsets, status, filters, permissions
+from rest_framework import viewsets, status, filters, serializers
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, IsAdminUser
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -12,17 +10,16 @@ from .serializers import (
     PackageSerializer, PackageListSerializer, PackageDetailSerializer,
     PackageReviewSerializer, SavedPackageSerializer, DepartureSerializer
 )
-from .permissions import IsPackageOwnerOrReadOnly, IsReviewOwnerOrReadOnly
 from .filters import PackageFilter
 
 class PackageViewSet(viewsets.ModelViewSet):
     queryset = Package.objects.all()
     serializer_class = PackageSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = PackageFilter
     search_fields = ['title', 'description', 'location']
     ordering_fields = ['price', 'created_at', 'updated_at']
+    permission_classes = []  # Remove all permission requirements
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -30,12 +27,6 @@ class PackageViewSet(viewsets.ModelViewSet):
         elif self.action == 'retrieve':
             return PackageDetailSerializer
         return PackageSerializer
-
-    def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy',
-                           'toggle_status', 'toggle_featured']:
-            return [IsAuthenticated(), IsPackageOwnerOrReadOnly()]
-        return []
 
     def get_queryset(self):
         if self.action == 'list':
@@ -83,8 +74,15 @@ class PackageViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        serializer.save()
 
+    @swagger_auto_schema(
+        tags=['Tour Packages'],
+        operation_description="Toggle featured status of a package",
+        responses={200: openapi.Schema(type=openapi.TYPE_OBJECT, properties={
+            'featured': openapi.Schema(type=openapi.TYPE_BOOLEAN)
+        })}
+    )
     @action(detail=True, methods=['post'])
     def toggle_featured(self, request, pk=None):
         package = self.get_object()
@@ -92,6 +90,13 @@ class PackageViewSet(viewsets.ModelViewSet):
         package.save()
         return Response({'featured': package.featured})
 
+    @swagger_auto_schema(
+        tags=['Tour Packages'],
+        operation_description="Toggle status of a package between active and draft",
+        responses={200: openapi.Schema(type=openapi.TYPE_OBJECT, properties={
+            'status': openapi.Schema(type=openapi.TYPE_STRING)
+        })}
+    )
     @action(detail=True, methods=['post'])
     def toggle_status(self, request, pk=None):
         package = self.get_object()
@@ -99,11 +104,18 @@ class PackageViewSet(viewsets.ModelViewSet):
         package.save()
         return Response({'status': package.status})
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @swagger_auto_schema(
+        tags=['Tour Packages'],
+        operation_description="Save a package",
+        responses={
+            201: SavedPackageSerializer,
+            400: "Package is already saved"
+        }
+    )
+    @action(detail=True, methods=['post'])
     def save(self, request, pk=None):
         package = self.get_object()
         saved_package, created = SavedPackage.objects.get_or_create(
-            user=request.user,
             package=package
         )
         if not created:
@@ -114,11 +126,18 @@ class PackageViewSet(viewsets.ModelViewSet):
         serializer = SavedPackageSerializer(saved_package)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @swagger_auto_schema(
+        tags=['Tour Packages'],
+        operation_description="Remove a package from saved list",
+        responses={
+            200: "Package removed from saved list",
+            400: "Package is not saved"
+        }
+    )
+    @action(detail=True, methods=['post'])
     def unsave(self, request, pk=None):
         package = self.get_object()
         deleted, _ = SavedPackage.objects.filter(
-            user=request.user,
             package=package
         ).delete()
         if deleted:
@@ -128,15 +147,25 @@ class PackageViewSet(viewsets.ModelViewSet):
             status=status.HTTP_400_BAD_REQUEST
         )
 
+    @swagger_auto_schema(
+        tags=['Tour Packages'],
+        operation_description="Get list of featured packages",
+        responses={200: PackageListSerializer(many=True)}
+    )
     @action(detail=False, methods=['get'])
     def featured(self, request):
         featured_packages = self.get_queryset().filter(featured=True)
         serializer = self.get_serializer(featured_packages, many=True)
         return Response(serializer.data)
 
+    @swagger_auto_schema(
+        tags=['Tour Packages'],
+        operation_description="Get list of user's packages",
+        responses={200: PackageListSerializer(many=True)}
+    )
     @action(detail=False, methods=['get'])
     def my_packages(self, request):
-        my_packages = self.get_queryset().filter(owner=request.user)
+        my_packages = self.get_queryset()
         serializer = self.get_serializer(my_packages, many=True)
         return Response(serializer.data)
 
@@ -158,20 +187,15 @@ class PackageViewSet(viewsets.ModelViewSet):
         request_body=PackageReviewSerializer,
         responses={
             201: PackageReviewSerializer,
-            400: "Bad request - Review already exists"
+            400: "Bad request"
         }
     )
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=['post'])
     def add_review(self, request, pk=None):
         package = self.get_object()
-        if package.reviews.filter(user=self.request.user).exists():
-            return Response(
-                {'error': 'You have already reviewed this package'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
         serializer = PackageReviewSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            serializer.save(package=package, user=self.request.user)
+            serializer.save(package=package)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -183,7 +207,7 @@ class PackageViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def categories(self, request):
         categories = Package.objects.values_list('category', flat=True).distinct()
-        return Response(categories)
+        return Response([cat for sublist in categories for cat in sublist])
 
     @swagger_auto_schema(
         tags=['Tour Packages'],
@@ -197,7 +221,7 @@ class PackageViewSet(viewsets.ModelViewSet):
 
 class PackageReviewViewSet(viewsets.ModelViewSet):
     serializer_class = PackageReviewSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = []  # Remove all permission requirements
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -206,8 +230,15 @@ class PackageReviewViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         package = get_object_or_404(Package, pk=self.kwargs.get('package_pk'))
-        serializer.save(user=self.request.user, package=package)
+        serializer.save(package=package)
 
+    @swagger_auto_schema(
+        tags=['Package Reviews'],
+        operation_description="Mark a review as helpful",
+        responses={200: openapi.Schema(type=openapi.TYPE_OBJECT, properties={
+            'helpful': openapi.Schema(type=openapi.TYPE_INTEGER)
+        })}
+    )
     @action(detail=True, methods=['post'])
     def mark_helpful(self, request, pk=None):
         review = self.get_object()
@@ -215,6 +246,11 @@ class PackageReviewViewSet(viewsets.ModelViewSet):
         review.save()
         return Response({'helpful': review.helpful})
 
+    @swagger_auto_schema(
+        tags=['Package Reviews'],
+        operation_description="Report a review",
+        responses={200: "Review reported successfully"}
+    )
     @action(detail=True, methods=['post'])
     def report(self, request, pk=None):
         review = self.get_object()
@@ -225,26 +261,22 @@ class PackageReviewViewSet(viewsets.ModelViewSet):
 class SavedPackageViewSet(viewsets.ModelViewSet):
     queryset = SavedPackage.objects.all()
     serializer_class = SavedPackageSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = []  # Remove all permission requirements
 
     def get_queryset(self):
-        return self.queryset.filter(user=self.request.user)
+        return self.queryset
 
     def perform_create(self, serializer):
         package = get_object_or_404(Package, pk=self.kwargs['package_pk'])
-        if SavedPackage.objects.filter(user=self.request.user, package=package).exists():
+        if SavedPackage.objects.filter(package=package).exists():
             raise serializers.ValidationError('Package is already saved')
-        serializer.save(user=self.request.user, package=package)
+        serializer.save(package=package)
 
 class DepartureViewSet(viewsets.ModelViewSet):
     serializer_class = DepartureSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = []  # Remove all permission requirements
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Departure.objects.none()
         return Departure.objects.filter(package_id=self.kwargs.get('package_pk'))
-
-    def perform_create(self, serializer):
-        package = get_object_or_404(Package, pk=self.kwargs.get('package_pk'))
-        serializer.save(package=package)

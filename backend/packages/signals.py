@@ -1,5 +1,6 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
+from django.db import models
 from .models import Package, PackageReview
 
 @receiver(post_save, sender=PackageReview)

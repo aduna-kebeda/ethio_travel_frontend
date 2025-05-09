@@ -24,3 +24,4 @@ psycopg2-binary==2.9.8
 drf-yasg==1.21.5
 swagger-spec-validator
 dj-database-url
+google-generativeai

@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'blog',
     'packages',
     'booking',
+    'chatbot',
     'drf_yasg',
 ]
 
@@ -203,6 +204,9 @@ EMAIL_TEMPLATES = {
         'template': 'emails/reset_password.html'
     }
 }
+
+# Gemini API settings
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')  # Get from environment variable
 
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
 

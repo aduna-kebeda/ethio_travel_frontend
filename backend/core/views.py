@@ -49,6 +49,34 @@ def api_root(request, format=None):
                 }
             }
         },
+        'chatbot': {
+            'message': {
+                'url': reverse('chatbot:chatbot-message', request=request, format=format),
+                'method': 'POST',
+                'auth_required': False,
+                'description': 'Send a message to the chatbot and get a response',
+                'body': {
+                    'message': 'string',
+                    'session_id': 'string (optional)'
+                },
+                'response': {
+                    'session_id': 'string',
+                    'response': {
+                        'content': 'string',
+                        'timestamp': 'string (date-time)'
+                    }
+                }
+            },
+            'history': {
+                'url': reverse('chatbot:chatbot-history', request=request, format=format),
+                'method': 'GET',
+                'auth_required': False,
+                'description': 'Get conversation history for a session',
+                'query_params': {
+                    'session_id': 'string'
+                }
+            }
+        },
         'email_verification': {
             'verify': {
                 'url': reverse('users:user-verify-email', request=request, format=format),
@@ -465,6 +493,34 @@ class APIRootView(APIView):
                     "response": {
                         "access": "string (JWT token)",
                         "refresh": "string (JWT refresh token)"
+                    }
+                },
+                "chatbot": {
+                    "message": {
+                        "url": reverse("chatbot:chatbot-message", request=request),
+                        "method": "POST",
+                        "auth_required": False,
+                        "description": "Send a message to the chatbot and get a response",
+                        "body": {
+                            "message": "string",
+                            "session_id": "string (optional)"
+                        },
+                        "response": {
+                            "session_id": "string",
+                            "response": {
+                                "content": "string",
+                                "timestamp": "string (date-time)"
+                            }
+                        }
+                    },
+                    "history": {
+                        "url": reverse("chatbot:chatbot-history", request=request),
+                        "method": "GET",
+                        "auth_required": False,
+                        "description": "Get conversation history for a session",
+                        "query_params": {
+                            "session_id": "string"
+                        }
                     }
                 }
             },
