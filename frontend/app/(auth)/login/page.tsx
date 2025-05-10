@@ -49,11 +49,17 @@ export default function LoginPage() {
       // Update auth context
       if (result.data?.user) {
         login(result.data.user)
-      }
 
-      // Redirect to the requested page or home
-      router.push(redirect)
+        // Force a small delay to ensure cookies are set before redirect
+        setTimeout(() => {
+          router.push(redirect)
+        }, 100)
+      } else {
+        setError("Login successful but user data is missing")
+        setIsLoading(false)
+      }
     } catch (error) {
+      console.error("Login error:", error)
       setError("Something went wrong. Please try again.")
       setIsLoading(false)
     }
@@ -62,7 +68,16 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setIsLoading(true)
     try {
-      await signIn("google", { callbackUrl: redirect })
+      const result = await signIn("google", {
+        redirect: false,
+        callbackUrl: redirect,
+      })
+
+      if (result?.error) {
+        setError("Failed to sign in with Google. Please try again.")
+        setIsLoading(false)
+      }
+      // The redirect will be handled by NextAuth
     } catch (error) {
       console.error("Google sign in error:", error)
       setError("Failed to sign in with Google. Please try again.")

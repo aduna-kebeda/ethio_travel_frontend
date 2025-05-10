@@ -1,13 +1,13 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { Send, ArrowLeft, MapPin, Calendar, Clock, CloudSun, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useAuth } from "@/components/auth-provider"
 
 type Message = {
   id: string
@@ -26,28 +26,56 @@ export default function ChatbotPage() {
   const [inputValue, setInputValue] = useState("")
   const [isTyping, setIsTyping] = useState(false)
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>([])
+  const [sessionId, setSessionId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+  const { getAccessToken } = useAuth()
+
+  // API base URL
+  const API_BASE_URL = "https://ai-driven-travel.onrender.com/api/chatbot"
+  // JWT token (replace with actual token retrieval mechanism)
+  // Change this:
+  // To this:
+  const getAuthToken = () => {
+    return getAccessToken()
+  }
 
   useEffect(() => {
-    // Initial greeting
-    setTimeout(() => {
-      const initialMessage: Message = {
-        id: "1",
-        text: "Hello! I'm your EthioTravel AI assistant. How can I help you plan your Ethiopian adventure today?",
-        sender: "bot",
-        timestamp: new Date(),
-      }
-      setMessages([initialMessage])
+    // Load conversation history or start a new session
+    const initializeChat = async () => {
+      const token = getAuthToken()
 
-      // Set initial quick replies
-      setQuickReplies([
-        { id: "qr1", text: "Popular destinations" },
-        { id: "qr2", text: "Best time to visit" },
-        { id: "qr3", text: "Recommended tours" },
-        { id: "qr4", text: "Travel costs" },
-      ])
-    }, 1000)
+      // If no token, show a message asking the user to log in
+      if (!token) {
+        setMessages([
+          {
+            id: Date.now().toString(),
+            text: "Welcome to EthioTravel Assistant! Please log in to access personalized travel assistance.",
+            sender: "bot",
+            timestamp: new Date(),
+          },
+        ])
+
+        setQuickReplies([
+          { id: "login", text: "Log in" },
+          { id: "signup", text: "Sign up" },
+          { id: "browse", text: "Continue browsing" },
+        ])
+
+        return
+      }
+
+      const storedSessionId = localStorage.getItem("chatbot_session_id")
+      if (storedSessionId) {
+        setSessionId(storedSessionId)
+        await fetchConversationHistory(storedSessionId)
+      } else {
+        // Start a new session with an initial message
+        await sendMessage("Hello", false)
+      }
+    }
+
+    initializeChat()
   }, [])
 
   useEffect(() => {
@@ -58,131 +86,219 @@ export default function ChatbotPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
+  // Update the fetchConversationHistory function to use the correct authentication
+  const fetchConversationHistory = async (sessionId: string) => {
+    try {
+      const token = getAuthToken()
+      if (!token) {
+        console.error("No authentication token found")
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            text: "Authentication required. Please log in to continue.",
+            sender: "bot",
+            timestamp: new Date(),
+          },
+        ])
+        return
+      }
+
+      const response = await fetch(`${API_BASE_URL}/message/history/?session_id=${sessionId}`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const mappedMessages: Message[] = data.messages.map((msg: any) => ({
+          id: msg.id.toString(),
+          text: msg.content,
+          sender: msg.sender as "user" | "bot",
+          timestamp: new Date(msg.created_at),
+        }))
+        setMessages(mappedMessages)
+      } else {
+        const errorData = await response.json()
+        console.error("Error fetching history:", errorData.error)
+        if (response.status === 403 || response.status === 404) {
+          localStorage.removeItem("chatbot_session_id")
+          setSessionId(null)
+          await sendMessage("Hello", false)
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              text: `Failed to load conversation history: ${errorData.error}`,
+              sender: "bot",
+              timestamp: new Date(),
+            },
+          ])
+        }
+      }
+    } catch (error) {
+      console.error("Network error:", error)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          text: "Network error. Please check your connection and try again.",
+          sender: "bot",
+          timestamp: new Date(),
+        },
+      ])
+    }
+  }
+
+  // Update the sendMessage function to use the correct authentication
+  const sendMessage = async (messageText: string, showInUI = true) => {
+    if (messageText.trim() === "") return
+
+    let userMessage: Message | null = null
+    if (showInUI) {
+      userMessage = {
+        id: Date.now().toString(),
+        text: messageText,
+        sender: "user",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, userMessage!])
+      setInputValue("")
+      setQuickReplies([])
+      setIsTyping(true)
+    }
+
+    try {
+      const token = getAuthToken()
+      if (!token) {
+        // Handle unauthenticated user more gracefully
+        setTimeout(() => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              text: "Please log in to continue using the chatbot. You can create an account or log in to access personalized travel assistance.",
+              sender: "bot",
+              timestamp: new Date(),
+            },
+          ])
+
+          // Add login options
+          setQuickReplies([
+            { id: "login", text: "Log in" },
+            { id: "signup", text: "Sign up" },
+            { id: "browse", text: "Continue browsing" },
+          ])
+
+          setIsTyping(false)
+        }, 1000)
+        return
+      }
+
+      const response = await fetch(`${API_BASE_URL}/message/message/`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: messageText,
+          session_id: sessionId || undefined,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const botMessage: Message = {
+          id: Date.now().toString(),
+          text: data.response.content || "Sorry, I didn't understand that. Please try again.",
+          sender: "bot",
+          timestamp: new Date(data.response.timestamp),
+        }
+        setMessages((prev) => [...prev, botMessage])
+        setSessionId(data.session_id)
+        localStorage.setItem("chatbot_session_id", data.session_id)
+
+        // Set quick replies from API response (assuming suggestions are provided)
+        const newQuickReplies = data.response.suggestions
+          ? data.response.suggestions.map((s: string, index: number) => ({
+              id: `sugg${index + 1}`,
+              text: s,
+            }))
+          : [
+              { id: "qr1", text: "Visa requirements" },
+              { id: "qr2", text: "Currency information" },
+              { id: "qr3", text: "Safety tips" },
+              { id: "qr4", text: "Check weather" },
+              { id: "qr5", text: "Speak to a human" },
+            ]
+        setQuickReplies(newQuickReplies)
+      } else {
+        const errorData = await response.json()
+        console.error("Error sending message:", errorData.error)
+        const errorMessage: Message = {
+          id: Date.now().toString(),
+          text: `Error: ${errorData.error || "Something went wrong. Please try again."}`,
+          sender: "bot",
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, errorMessage])
+        // Set default quick replies on error
+        setQuickReplies([
+          { id: "qr1", text: "Visa requirements" },
+          { id: "qr2", text: "Currency information" },
+          { id: "qr3", text: "Safety tips" },
+          { id: "qr4", text: "Check weather" },
+          { id: "qr5", text: "Speak to a human" },
+        ])
+      }
+    } catch (error) {
+      console.error("Network error:", error)
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        text: "Network error. Please check your connection and try again.",
+        sender: "bot",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+      // Set default quick replies on error
+      setQuickReplies([
+        { id: "qr1", text: "Visa requirements" },
+        { id: "qr2", text: "Currency information" },
+        { id: "qr3", text: "Safety tips" },
+        { id: "qr4", text: "Check weather" },
+        { id: "qr5", text: "Speak to a human" },
+      ])
+    } finally {
+      setIsTyping(false)
+    }
+  }
+
   const handleSendMessage = (e?: React.FormEvent) => {
     if (e) e.preventDefault()
-
-    if (inputValue.trim() === "") return
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: inputValue,
-      sender: "user",
-      timestamp: new Date(),
-    }
-
-    setMessages((prev) => [...prev, userMessage])
-    setInputValue("")
-    setQuickReplies([])
-    setIsTyping(true)
-
-    // Simulate bot response
-    setTimeout(() => {
-      handleBotResponse(inputValue)
-      setIsTyping(false)
-    }, 1500)
+    sendMessage(inputValue)
   }
 
+  // Update the handleQuickReplyClick function to handle login/signup options
   const handleQuickReplyClick = (reply: QuickReply) => {
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: reply.text,
-      sender: "user",
-      timestamp: new Date(),
+    // Handle authentication-related quick replies
+    if (reply.id === "login") {
+      router.push("/login")
+      return
+    } else if (reply.id === "signup") {
+      router.push("/signup")
+      return
+    } else if (reply.id === "browse") {
+      router.push("/")
+      return
     }
 
-    setMessages((prev) => [...prev, userMessage])
-    setQuickReplies([])
-    setIsTyping(true)
-
-    // Simulate bot response
-    setTimeout(() => {
-      handleBotResponse(reply.text)
-      setIsTyping(false)
-    }, 1500)
-  }
-
-  const handleBotResponse = (userInput: string) => {
-    const lowerInput = userInput.toLowerCase()
-    let botResponse = ""
-    let newQuickReplies: QuickReply[] = []
-
-    if (lowerInput.includes("popular") && lowerInput.includes("destination")) {
-      botResponse =
-        "Ethiopia has many amazing destinations! Some of the most popular ones include Lalibela with its rock-hewn churches, the ancient city of Axum, the Simien Mountains, and the Danakil Depression. Would you like more information about any of these places?"
-      newQuickReplies = [
-        { id: "dest1", text: "Tell me about Lalibela" },
-        { id: "dest2", text: "Tell me about Axum" },
-        { id: "dest3", text: "Tell me about Simien Mountains" },
-        { id: "dest4", text: "Tell me about Danakil Depression" },
-      ]
-    } else if (lowerInput.includes("best time") || lowerInput.includes("when to visit")) {
-      botResponse =
-        "The best time to visit Ethiopia is during the dry season from October to March. The weather is pleasant and ideal for trekking and sightseeing. Would you like to know about the weather in specific regions?"
-      newQuickReplies = [
-        { id: "weather1", text: "Weather in Addis Ababa" },
-        { id: "weather2", text: "Weather in Lalibela" },
-        { id: "weather3", text: "Weather in Danakil" },
-      ]
-    } else if (lowerInput.includes("tour") || lowerInput.includes("package")) {
-      botResponse =
-        "We have several popular tour packages! The Historical Northern Circuit is our most popular, visiting Lalibela, Axum, and Gondar. We also have cultural tours to the Omo Valley, trekking in the Simien Mountains, and adventure tours to the Danakil Depression. Which interests you most?"
-      newQuickReplies = [
-        { id: "tour1", text: "Historical Northern Circuit" },
-        { id: "tour2", text: "Omo Valley Cultural Tour" },
-        { id: "tour3", text: "Simien Mountains Trek" },
-        { id: "tour4", text: "Danakil Depression Adventure" },
-      ]
-    } else if (lowerInput.includes("cost") || lowerInput.includes("price") || lowerInput.includes("budget")) {
-      botResponse =
-        "Travel costs in Ethiopia vary depending on your style of travel. Budget travelers can get by on $30-50 per day, mid-range travelers should budget $100-150 per day, and luxury travelers might spend $200+ per day. Would you like a cost breakdown for a specific type of trip?"
-      newQuickReplies = [
-        { id: "cost1", text: "Budget travel costs" },
-        { id: "cost2", text: "Mid-range travel costs" },
-        { id: "cost3", text: "Luxury travel costs" },
-      ]
-    } else if (lowerInput.includes("hello") || lowerInput.includes("hi") || lowerInput.includes("hey")) {
-      botResponse =
-        "Hello there! I'm your EthioTravel AI assistant. How can I help you plan your Ethiopian adventure today?"
-      newQuickReplies = [
-        { id: "qr1", text: "Popular destinations" },
-        { id: "qr2", text: "Best time to visit" },
-        { id: "qr3", text: "Recommended tours" },
-        { id: "qr4", text: "Travel costs" },
-      ]
-    } else if (lowerInput.includes("thank")) {
-      botResponse =
-        "You're welcome! I'm happy to help with your Ethiopian travel plans. Is there anything else you'd like to know?"
-      newQuickReplies = [
-        { id: "more1", text: "Yes, I have more questions" },
-        { id: "more2", text: "No, that's all for now" },
-      ]
-    } else if (lowerInput.includes("human") || lowerInput.includes("agent") || lowerInput.includes("person")) {
-      botResponse =
-        "I'd be happy to connect you with a human travel agent. Please click the button below to request a call from one of our travel specialists."
-      newQuickReplies = [
-        { id: "human1", text: "Request a call" },
-        { id: "human2", text: "Continue with AI assistant" },
-      ]
-    } else {
-      botResponse =
-        "I'm not sure I understand. Could you please rephrase your question or choose one of these popular topics?"
-      newQuickReplies = [
-        { id: "qr1", text: "Popular destinations" },
-        { id: "qr2", text: "Best time to visit" },
-        { id: "qr3", text: "Recommended tours" },
-        { id: "qr4", text: "Travel costs" },
-      ]
-    }
-
-    const botMessage: Message = {
-      id: Date.now().toString(),
-      text: botResponse,
-      sender: "bot",
-      timestamp: new Date(),
-    }
-
-    setMessages((prev) => [...prev, botMessage])
-    setQuickReplies(newQuickReplies)
+    sendMessage(reply.text)
   }
 
   const handleBackClick = () => {
@@ -264,11 +380,15 @@ export default function ChatbotPage() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  {reply.id.startsWith("dest") && <MapPin className="inline h-3 w-3 mr-1" />}
-                  {reply.id.startsWith("weather") && <CloudSun className="inline h-3 w-3 mr-1" />}
-                  {reply.id.startsWith("tour") && <Calendar className="inline h-3 w-3 mr-1" />}
-                  {reply.id.startsWith("cost") && <Clock className="inline h-3 w-3 mr-1" />}
-                  {reply.id.startsWith("human") && <User className="inline h-3 w-3 mr-1" />}
+                  {/* Dynamically assign icons based on reply text */}
+                  {reply.text.toLowerCase().includes("visa") && <MapPin className="inline h-3 w-3 mr-1" />}
+                  {reply.text.toLowerCase().includes("weather") && <CloudSun className="inline h-3 w-3 mr-1" />}
+                  {reply.text.toLowerCase().includes("tour") && <Calendar className="inline h-3 w-3 mr-1" />}
+                  {reply.text.toLowerCase().includes("cost") ||
+                    (reply.text.toLowerCase().includes("currency") && <Clock className="inline h-3 w-3 mr-1" />)}
+                  {reply.text.toLowerCase().includes("human") && <User className="inline h-3 w-3 mr-1" />}
+                  {reply.text.toLowerCase().includes("safety") && <User className="inline h-3 w-3 mr-1" />}
+                  {reply.text.toLowerCase().includes("gondar") && <MapPin className="inline h-3 w-3 mr-1" />}
                   {reply.text}
                 </motion.button>
               ))}
@@ -290,11 +410,12 @@ export default function ChatbotPage() {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 className="flex-1 rounded-l-full"
+                disabled={isTyping}
               />
               <Button
                 type="submit"
                 className="bg-[#E91E63] hover:bg-[#D81B60] text-white rounded-r-full"
-                disabled={inputValue.trim() === ""}
+                disabled={inputValue.trim() === "" || isTyping}
               >
                 <Send className="h-5 w-5" />
               </Button>

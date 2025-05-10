@@ -1,4 +1,16 @@
-import type { NextAuthOptions } from "next-auth"
+import type { NextAuthOptions, Session } from "next-auth"
+
+// Extend the Session type to include the 'id' property on the user object
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string
+      name?: string | null
+      email?: string | null
+      image?: string | null
+    }
+  }
+}
 import GoogleProvider from "next-auth/providers/google"
 import CredentialsProvider from "next-auth/providers/credentials"
 

@@ -7,8 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, SlidersHorizontal } from "lucide-react"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { useState } from "react"
-import { useMobile } from "@/hooks/use-mobile"
+import { useState, useEffect } from "react"
 
 interface DestinationFiltersProps {
   categories: string[]
@@ -28,7 +27,24 @@ export function DestinationFilters({
   onSortChange,
 }: DestinationFiltersProps) {
   const [searchTerm, setSearchTerm] = useState("")
-  const isMobile = useMobile()
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+
+    // Initial check
+    checkIfMobile()
+
+    // Add event listener
+    window.addEventListener("resize", checkIfMobile)
+
+    // Clean up
+    return () => {
+      window.removeEventListener("resize", checkIfMobile)
+    }
+  }, [])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()

@@ -46,7 +46,7 @@ const setAuthCookies = async (accessToken: string, refreshToken: string, user?: 
 
   // Set access token cookie
   cookieStore.set("access_token", accessToken, {
-    httpOnly: true,
+    httpOnly: false, // Changed to false so client JS can access it
     secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 60 * 24 * 7, // 1 week
     path: "/",
@@ -55,9 +55,18 @@ const setAuthCookies = async (accessToken: string, refreshToken: string, user?: 
 
   // Set refresh token cookie
   cookieStore.set("refresh_token", refreshToken, {
-    httpOnly: true,
+    httpOnly: false, // Changed to false so client JS can access it
     secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 60 * 24 * 30, // 30 days
+    path: "/",
+    sameSite: "lax",
+  })
+
+  // Also set a regular token cookie for middleware
+  cookieStore.set("token", accessToken, {
+    httpOnly: false, // Changed to false so client JS can access it
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60 * 24 * 7, // 1 week
     path: "/",
     sameSite: "lax",
   })
@@ -72,6 +81,15 @@ const setAuthCookies = async (accessToken: string, refreshToken: string, user?: 
       sameSite: "lax",
     })
   }
+
+  // Also store in localStorage for client-side access
+  if (typeof window !== "undefined") {
+    localStorage.setItem("access_token", accessToken)
+    localStorage.setItem("refresh_token", refreshToken)
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user))
+    }
+  }
 }
 
 // Helper function to clear cookies
@@ -80,6 +98,7 @@ const clearAuthCookies = async () => {
   cookieStore.set("access_token", "", { maxAge: -1, path: "/" })
   cookieStore.set("refresh_token", "", { maxAge: -1, path: "/" })
   cookieStore.set("user", "", { maxAge: -1, path: "/" })
+  cookieStore.set("token", "", { maxAge: -1, path: "/" })
 }
 
 export async function registerUser(data: RegisterUserData) {
@@ -148,8 +167,29 @@ export async function loginUser(data: LoginData) {
       return { success: false, error: result.message || "Login failed", data: null }
     }
 
+    // Ensure we have the required data
+    if (!result.data?.access_token || !result.data?.refresh_token || !result.data?.user) {
+      return {
+        success: false,
+        error: "Invalid response from server. Missing authentication data.",
+        data: null,
+      }
+    }
+
+    // Set cookies
     await setAuthCookies(result.data.access_token, result.data.refresh_token, result.data.user)
+
+    // Store tokens in localStorage for client-side access
+    if (typeof window !== "undefined") {
+      localStorage.setItem("access_token", result.data.access_token)
+      localStorage.setItem("refresh_token", result.data.refresh_token)
+      localStorage.setItem("user", JSON.stringify(result.data.user))
+    }
+
+    // Force revalidation of all pages that might depend on auth state
     revalidatePath("/")
+    revalidatePath("/home")
+    revalidatePath("/profile")
 
     return { success: true, error: null, data: result.data }
   } catch (error) {
@@ -216,4 +256,10 @@ export async function getCurrentUser(): Promise<User | null> {
 export async function isAuthenticated(): Promise<boolean> {
   const cookieStore = await cookies()
   return !!cookieStore.get("access_token")?.value
+}
+
+// New function to get token for client-side use
+export async function getClientToken(): Promise<string | null> {
+  const cookieStore = await cookies()
+  return cookieStore.get("access_token")?.value || null
 }

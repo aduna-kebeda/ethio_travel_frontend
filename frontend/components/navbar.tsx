@@ -6,7 +6,7 @@ import { Bell, User, Menu, X, Building2 } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ClientOnly } from "@/components/client-only"
 import {
   DropdownMenu,
@@ -43,10 +43,27 @@ export function Navbar() {
     try {
       await logoutUser()
       logout()
+      // Redirect to home page after logout
+      router.push("/home")
     } catch (error) {
       console.error("Logout error:", error)
     }
   }
+
+  useEffect(() => {
+    // This will force a re-render when auth state changes
+    const handleAuthChange = () => {
+      // Just forcing a re-render
+      setIsOpen(isOpen)
+    }
+
+    window.addEventListener("auth-state-changed", handleAuthChange)
+    return () => {
+      window.removeEventListener("auth-state-changed", handleAuthChange)
+    }
+  }, [isOpen])
+
+  const isUserAuthenticated = isAuthenticated && user !== null
 
   return (
     <nav className="bg-white shadow-sm border-b sticky top-0 z-40">
@@ -81,7 +98,7 @@ export function Navbar() {
           <div className="flex items-center space-x-4">
             {isLoading ? (
               <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse"></div>
-            ) : isAuthenticated && user ? (
+            ) : isUserAuthenticated ? (
               <>
                 <Button variant="ghost" size="icon" className="relative rounded-md">
                   <ClientOnly>
@@ -197,7 +214,7 @@ export function Navbar() {
                   {pathname === item.href && <span className="absolute bottom-1 left-3 right-3 h-0.5 bg-primary" />}
                 </Link>
               ))}
-              {isAuthenticated && user && (
+              {isUserAuthenticated ? (
                 <>
                   <Link
                     href="/business/my-business"
@@ -223,6 +240,25 @@ export function Navbar() {
                   >
                     Logout
                   </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="px-3 py-2 text-base font-semibold text-gray-700 hover:text-primary relative"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    Login
+                    {pathname === "/login" && <span className="absolute bottom-1 left-3 right-3 h-0.5 bg-primary" />}
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="px-3 py-2 text-base font-semibold text-gray-700 hover:text-primary relative"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    Register
+                    {pathname === "/signup" && <span className="absolute bottom-1 left-3 right-3 h-0.5 bg-primary" />}
+                  </Link>
                 </>
               )}
             </div>

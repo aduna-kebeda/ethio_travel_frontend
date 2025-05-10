@@ -1,14 +1,26 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { MessageSquare, Send, X, Minimize2, Maximize2, Cloud, Calendar, User } from "lucide-react"
+import {
+  MessageSquare,
+  Send,
+  X,
+  Minimize2,
+  Maximize2,
+  Cloud,
+  Calendar,
+  User,
+  MapPin,
+  ThermometerSun,
+} from "lucide-react"
 import { Avatar } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { ClientOnly } from "@/components/client-only"
+import { useAuth } from "@/components/auth-provider"
+import { detectIntent } from "@/lib/message-parser"
 
 // Message types
 type MessageType = "text" | "weather" | "alert" | "itinerary" | "loading" | "options"
@@ -27,44 +39,154 @@ interface QuickReply {
   text: string
 }
 
+interface WeatherData {
+  location: string
+  temp: string
+  condition: string
+  humidity: string
+  icon?: string
+  forecast?: {
+    day: string
+    temp: string
+    condition: string
+  }[]
+}
+
 export function Chatbot() {
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
   const [message, setMessage] = useState("")
   const [isTyping, setIsTyping] = useState(false)
   const [isHumanRequested, setIsHumanRequested] = useState(false)
-
-  // Initial messages
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      content: "Hello! I'm your EthioTravel AI assistant. How can I help with your Ethiopian adventure today?",
-      sender: "bot",
-      timestamp: new Date(),
-      type: "text",
-    },
-    {
-      id: "options",
-      content: "Quick options",
-      sender: "bot",
-      timestamp: new Date(),
-      type: "options",
-      data: {
-        options: [
-          { id: "itinerary", text: "Adjust my itinerary" },
-          { id: "weather", text: "Weather updates" },
-          { id: "faq", text: "Common questions" },
-          { id: "emergency", text: "Emergency assistance" },
-        ],
-      },
-    },
-  ])
-
+  const [messages, setMessages] = useState<Message[]>([])
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+  const [lastMessageType, setLastMessageType] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // API base URL
+  const API_BASE_URL = "https://ai-driven-travel.onrender.com/api/chatbot"
+
+  // Get auth context
+  const { user, isAuthenticated, isLoading } = useAuth()
+
+  // Debug authentication state
+  useEffect(() => {
+    console.log("Auth state changed:", { isAuthenticated, user, isLoading })
+  }, [isAuthenticated, user, isLoading])
+
+  // Get access token with fallback to environment variable and localStorage
+  const getAuthToken = () => {
+    // First try localStorage (more reliable in development)
+    if (typeof window !== "undefined") {
+      const localStorageToken = localStorage.getItem("access_token")
+      if (localStorageToken) {
+        console.log("Found token in localStorage")
+        return localStorageToken
+      }
+    }
+
+    // Then try cookies
+    if (typeof document !== "undefined") {
+      try {
+        const cookies = document.cookie.split(";")
+        const tokenCookie = cookies.find((cookie) => cookie.trim().startsWith("access_token="))
+        if (tokenCookie) {
+          const token = tokenCookie.split("=")[1].trim()
+          console.log("Found token in cookies")
+          return token
+        }
+      } catch (error) {
+        console.error("Error reading token from cookies:", error)
+      }
+    }
+
+    // Fallback to environment variable
+    if (process.env.NEXT_PUBLIC_JWT_TOKEN) {
+      console.log("Using environment variable token")
+      return process.env.NEXT_PUBLIC_JWT_TOKEN
+    }
+
+    console.log("No token found")
+    return null
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
+
+  // Initialize chat when authentication state changes or component mounts
+  useEffect(() => {
+    // Don't initialize until auth state is loaded
+    if (isLoading) {
+      return
+    }
+
+    console.log("Initializing chat with auth state:", { isAuthenticated, user })
+    setAuthChecked(true)
+
+    // Load conversation history or start a new session
+    const initializeChat = async () => {
+      // Check if user is authenticated
+      const token = getAuthToken()
+      console.log("Token available:", !!token)
+
+      if (!isAuthenticated || !token) {
+        console.log("User not authenticated, showing login prompt")
+        setMessages([
+          {
+            id: `welcome-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            content: "Welcome to EthioTravel Assistant! Please log in to access personalized travel assistance.",
+            sender: "bot",
+            timestamp: new Date(),
+            type: "text",
+          },
+        ])
+
+        // Add login options
+        setTimeout(() => {
+          addOptionsMessage([
+            { id: "login", text: "Log in" },
+            { id: "signup", text: "Sign up" },
+            { id: "continue-browsing", text: "Continue browsing" },
+          ])
+        }, 500)
+
+        return
+      }
+
+      console.log("User is authenticated, starting session")
+
+      // User is authenticated, start a session
+      setMessages([
+        {
+          id: `welcome-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          content: `Welcome back${user?.first_name ? `, ${user.first_name}` : ""}! How can I help you with your travel plans today?`,
+          sender: "bot",
+          timestamp: new Date(),
+          type: "text",
+        },
+      ])
+
+      // Don't add options message immediately after welcome
+      // This prevents duplicate messages
+
+      const storedSessionId = localStorage.getItem("chatbot_session_id")
+      if (storedSessionId) {
+        console.log("Found stored session ID:", storedSessionId)
+        setSessionId(storedSessionId)
+        await fetchConversationHistory(storedSessionId)
+      } else {
+        console.log("No stored session ID, starting new session")
+        // Don't send an automatic "Hello" message
+        // This prevents duplicate welcome messages
+        setSessionId(`new-session-${Date.now()}`)
+        localStorage.setItem("chatbot_session_id", `new-session-${Date.now()}`)
+      }
+    }
+
+    initializeChat()
+  }, [isAuthenticated, isLoading])
 
   useEffect(() => {
     if (isOpen && !isMinimized) {
@@ -72,38 +194,490 @@ export function Chatbot() {
     }
   }, [messages, isOpen, isMinimized])
 
-  // FAQ responses
-  const faqResponses: Record<string, string> = {
-    visa: "Most visitors to Ethiopia need a visa. You can apply for an e-visa online at https://www.evisa.gov.et/ or get a visa on arrival at Bole International Airport in Addis Ababa. The standard tourist visa is valid for 30 days and costs approximately $50 USD.",
-    currency:
-      "The currency of Ethiopia is the Ethiopian Birr (ETB). ATMs are available in major cities, but it's advisable to carry cash when traveling to rural areas. Major hotels and some restaurants in Addis Ababa accept credit cards.",
-    language:
-      "Amharic is the official language of Ethiopia. English is widely spoken in tourist areas, hotels, and by guides. Learning a few basic Amharic phrases is appreciated by locals.",
-    safety:
-      "Ethiopia is generally safe for tourists, but like any destination, it's important to take standard precautions. Stay informed about current conditions, avoid isolated areas at night, and keep valuables secure. Our app provides real-time safety alerts for all regions.",
-    weather:
-      "Ethiopia's climate varies by altitude. The highlands are temperate with minimal seasonal temperature variation. The best time to visit is during the dry season (October to May). The lowlands can be significantly hotter.",
-    food: "Ethiopian cuisine is unique and flavorful. Try injera (sourdough flatbread) with various wats (stews). Vegetarians will find plenty of options as many Ethiopians observe fasting periods with meat-free dishes.",
-    transport:
-      "Within cities, taxis and bajaj (auto-rickshaws) are common. For intercity travel, domestic flights are recommended for longer distances. Buses connect major towns but can be crowded and slow.",
-    internet:
-      "Wi-Fi is available in most hotels and many cafes in Addis Ababa and other major cities. Mobile data is affordable - you can purchase a local SIM card with data packages at the airport or in mobile shops.",
+  // Update the fetchConversationHistory function to use the correct authentication
+  const fetchConversationHistory = async (sessionId: string) => {
+    try {
+      const token = getAuthToken()
+      if (!token) {
+        console.error("No authentication token found")
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `error-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            content: "Authentication required. Please log in to continue.",
+            sender: "system",
+            timestamp: new Date(),
+            type: "text",
+          },
+        ])
+        return
+      }
+
+      console.log("Fetching conversation history for session:", sessionId)
+
+      const response = await fetch(`${API_BASE_URL}/message/history/?session_id=${sessionId}`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log("Received history data:", data)
+
+        if (!data.messages) {
+          throw new Error("Invalid history response: messages field missing")
+        }
+
+        const mappedMessages: Message[] = data.messages.map((msg: any) => ({
+          id: `history-${msg.id || Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          content: msg.content || "No content",
+          sender: msg.sender || "bot",
+          timestamp: new Date(msg.created_at || Date.now()),
+          type: msg.type || "text",
+          data: msg.data || undefined,
+        }))
+
+        setMessages(mappedMessages)
+      } else {
+        const errorText = await response.text()
+        console.error("Error fetching history:", errorText || response.statusText)
+
+        if (response.status === 403 || response.status === 404) {
+          console.log("Session not found or expired, starting new session")
+          localStorage.removeItem("chatbot_session_id")
+          setSessionId(null)
+          // Don't send an automatic message
+          setSessionId(`new-session-${Date.now()}`)
+          localStorage.setItem("chatbot_session_id", `new-session-${Date.now()}`)
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `error-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+              content: `Failed to load conversation history: ${errorText || "Unknown error"}`,
+              sender: "system",
+              timestamp: new Date(),
+              type: "text",
+            },
+          ])
+        }
+      }
+    } catch (error) {
+      console.error("Network error fetching history:", error)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `error-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          content: "Network error. Please check your connection and try again.",
+          sender: "system",
+          timestamp: new Date(),
+          type: "text",
+        },
+      ])
+    }
   }
 
-  // Weather data (simulated)
-  const weatherData = {
-    "Addis Ababa": { temp: "22°C", condition: "Sunny", humidity: "45%" },
-    Lalibela: { temp: "24°C", condition: "Clear", humidity: "30%" },
-    Gondar: { temp: "26°C", condition: "Partly cloudy", humidity: "40%" },
-    Axum: { temp: "28°C", condition: "Sunny", humidity: "25%" },
-    Harar: { temp: "25°C", condition: "Clear", humidity: "35%" },
-    "Bahir Dar": { temp: "27°C", condition: "Partly cloudy", humidity: "50%" },
-    "Danakil Depression": { temp: "38°C", condition: "Hot", humidity: "15%" },
-    "Simien Mountains": { temp: "15°C", condition: "Cloudy", humidity: "60%" },
+  // Get weather data for a location
+  const getWeatherData = async (location: string): Promise<WeatherData | null> => {
+    try {
+      // This would normally be an API call to a weather service
+      // For now, we'll return mock data
+
+      // Simulate API call delay
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      // Mock data for different locations
+      const weatherData: Record<string, WeatherData> = {
+        "addis ababa": {
+          location: "Addis Ababa",
+          temp: "22°C",
+          condition: "Partly Cloudy",
+          humidity: "45%",
+          forecast: [
+            { day: "Tomorrow", temp: "23°C", condition: "Sunny" },
+            { day: "Wednesday", temp: "21°C", condition: "Scattered Showers" },
+          ],
+        },
+        gondar: {
+          location: "Gondar",
+          temp: "25°C",
+          condition: "Sunny",
+          humidity: "30%",
+          forecast: [
+            { day: "Tomorrow", temp: "26°C", condition: "Clear" },
+            { day: "Wednesday", temp: "24°C", condition: "Partly Cloudy" },
+          ],
+        },
+        lalibela: {
+          location: "Lalibela",
+          temp: "20°C",
+          condition: "Clear",
+          humidity: "35%",
+          forecast: [
+            { day: "Tomorrow", temp: "22°C", condition: "Sunny" },
+            { day: "Wednesday", temp: "21°C", condition: "Clear" },
+          ],
+        },
+        axum: {
+          location: "Axum",
+          temp: "27°C",
+          condition: "Hot",
+          humidity: "25%",
+          forecast: [
+            { day: "Tomorrow", temp: "28°C", condition: "Hot" },
+            { day: "Wednesday", temp: "26°C", condition: "Sunny" },
+          ],
+        },
+        "bahir dar": {
+          location: "Bahir Dar",
+          temp: "24°C",
+          condition: "Partly Cloudy",
+          humidity: "50%",
+          forecast: [
+            { day: "Tomorrow", temp: "25°C", condition: "Sunny" },
+            { day: "Wednesday", temp: "23°C", condition: "Light Rain" },
+          ],
+        },
+        harar: {
+          location: "Harar",
+          temp: "23°C",
+          condition: "Clear",
+          humidity: "40%",
+          forecast: [
+            { day: "Tomorrow", temp: "24°C", condition: "Sunny" },
+            { day: "Wednesday", temp: "22°C", condition: "Clear" },
+          ],
+        },
+        default: {
+          location: "Ethiopia",
+          temp: "23°C",
+          condition: "Varies by Region",
+          humidity: "40%",
+          forecast: [
+            { day: "Tomorrow", temp: "24°C", condition: "Varies by Region" },
+            { day: "Wednesday", temp: "22°C", condition: "Varies by Region" },
+          ],
+        },
+      }
+
+      const normalizedLocation = location.toLowerCase().trim()
+      return weatherData[normalizedLocation] || weatherData.default
+    } catch (error) {
+      console.error("Error fetching weather data:", error)
+      return null
+    }
   }
 
-  // Quick replies based on context
-  const getQuickReplies = (): QuickReply[] => {
+  // Handle weather check request
+  const handleWeatherCheck = async (location = "Ethiopia") => {
+    setIsTyping(true)
+
+    // Add user message if this is a direct request
+    if (!location || location === "Ethiopia") {
+      addOptionsMessage([
+        { id: "weather-addis", text: "Addis Ababa" },
+        { id: "weather-gondar", text: "Gondar" },
+        { id: "weather-lalibela", text: "Lalibela" },
+        { id: "weather-bahir-dar", text: "Bahir Dar" },
+      ])
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `weather-prompt-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          content: "Which city's weather would you like to check?",
+          sender: "bot",
+          timestamp: new Date(),
+          type: "text",
+        },
+      ])
+
+      setIsTyping(false)
+      return
+    }
+
+    const weatherData = await getWeatherData(location)
+
+    if (weatherData) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `weather-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          content: `Weather in ${weatherData.location}`,
+          sender: "bot",
+          timestamp: new Date(),
+          type: "weather",
+          data: weatherData,
+        },
+      ])
+
+      // Don't add options after weather response
+      setLastMessageType("weather")
+    } else {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `weather-error-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          content: `I couldn't retrieve the weather for ${location}. Please try again later or check another location.`,
+          sender: "bot",
+          timestamp: new Date(),
+          type: "text",
+        },
+      ])
+
+      // Add weather location options
+      addOptionsMessage([
+        { id: "weather-addis", text: "Addis Ababa" },
+        { id: "weather-gondar", text: "Gondar" },
+        { id: "weather-lalibela", text: "Lalibela" },
+        { id: "weather-bahir-dar", text: "Bahir Dar" },
+      ])
+    }
+
+    setIsTyping(false)
+  }
+
+  // Update the sendMessage function to handle unauthenticated users
+  const sendMessage = async (messageText: string, showInUI = true) => {
+    if (messageText.trim() === "") return
+
+    let userMessage: Message | null = null
+    if (showInUI) {
+      userMessage = {
+        id: `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        content: messageText,
+        sender: "user",
+        timestamp: new Date(),
+        type: "text",
+      }
+      setMessages((prev) => [...prev, userMessage!])
+      setMessage("")
+      setIsTyping(true)
+    }
+
+    // Check for special commands
+    const lowerMessage = messageText.toLowerCase().trim()
+
+    // Handle weather check command
+    if (lowerMessage.includes("weather") || lowerMessage.includes("check weather")) {
+      // Extract location if provided
+      let location = "Ethiopia"
+      const locationMatch = lowerMessage.match(/weather (?:in|for|at) (.+)/i)
+      if (locationMatch && locationMatch[1]) {
+        location = locationMatch[1]
+      }
+
+      await handleWeatherCheck(location)
+      return
+    }
+
+    try {
+      // Check authentication again to ensure it's current
+      const token = getAuthToken()
+      if (!token) {
+        console.error("No authentication token found when sending message")
+        setTimeout(() => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `auth-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+              content: "Authentication token not found. Please try logging in again.",
+              sender: "bot",
+              timestamp: new Date(),
+              type: "text",
+            },
+          ])
+
+          // Add login options
+          addOptionsMessage([
+            { id: "login", text: "Log in" },
+            { id: "signup", text: "Sign up" },
+            { id: "continue-browsing", text: "Continue browsing" },
+          ])
+
+          setIsTyping(false)
+        }, 1000)
+        return
+      }
+
+      console.log("Sending message:", messageText)
+      console.log("Session ID:", sessionId)
+      console.log("Using token:", token.substring(0, 10) + "...")
+
+      const response = await fetch(`${API_BASE_URL}/message/message/`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: messageText,
+          session_id: sessionId || undefined,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log("Received response:", data)
+
+        if (!data.session_id || !data.response) {
+          throw new Error("Invalid response: session_id or response missing")
+        }
+
+        const messageType = data.response.type || "text"
+        const botMessage: Message = {
+          id: `bot-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          content: data.response.content || "Sorry, I didn't understand that. Please try again.",
+          sender: "bot",
+          timestamp: new Date(data.response.timestamp || Date.now()),
+          type: messageType as MessageType,
+          data: data.response.data || undefined,
+        }
+
+        setMessages((prev) => [...prev, botMessage])
+        setSessionId(data.session_id)
+        localStorage.setItem("chatbot_session_id", data.session_id)
+
+        // Detect intent to determine if we should show quick replies
+        const intent = detectIntent(messageText)
+        setLastMessageType(intent)
+
+        // Only add quick replies for certain intents
+        const shouldAddQuickReplies = !["weather", "itinerary", "booking"].includes(intent)
+
+        if (shouldAddQuickReplies) {
+          // Add quick replies from API response or use contextual ones
+          const newQuickReplies = data.response.suggestions
+            ? data.response.suggestions.map((s: string, index: number) => ({
+                id: `sugg${index + 1}`,
+                text: s,
+              }))
+            : getContextualQuickReplies(intent, messageText)
+
+          addOptionsMessage(newQuickReplies)
+        }
+      } else {
+        const errorText = await response.text()
+        console.error("Error sending message:", errorText || response.statusText)
+
+        // Check if it's an authentication error
+        if (response.status === 401 || response.status === 403) {
+          console.log("Authentication error when sending message")
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `auth-error-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+              content: "Your session has expired. Please log in again to continue.",
+              sender: "system",
+              timestamp: new Date(),
+              type: "text",
+            },
+          ])
+
+          // Add login options
+          addOptionsMessage([
+            { id: "login", text: "Log in" },
+            { id: "signup", text: "Sign up" },
+            { id: "continue-browsing", text: "Continue browsing" },
+          ])
+        } else {
+          const errorMessage: Message = {
+            id: `error-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            content: `Error: ${errorText || response.statusText || "Something went wrong. Please try again."}`,
+            sender: "system",
+            timestamp: new Date(),
+            type: "text",
+          }
+          setMessages((prev) => [...prev, errorMessage])
+
+          addOptionsMessage([
+            { id: "faq-visa", text: "Visa requirements" },
+            { id: "faq-currency", text: "Currency information" },
+            { id: "faq-safety", text: "Safety tips" },
+            { id: "weather-check", text: "Check weather" },
+            { id: "human-agent", text: "Speak to a human" },
+          ])
+        }
+      }
+    } catch (error: any) {
+      console.error("Network error sending message:", error.message)
+      const errorMessage: Message = {
+        id: `error-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        content: `Network error: ${error.message || "Please check your connection and try again."}`,
+        sender: "system",
+        timestamp: new Date(),
+        type: "text",
+      }
+      setMessages((prev) => [...prev, errorMessage])
+      addOptionsMessage([
+        { id: "faq-visa", text: "Visa requirements" },
+        { id: "faq-currency", text: "Currency information" },
+        { id: "faq-safety", text: "Safety tips" },
+        { id: "weather-check", text: "Check weather" },
+        { id: "human-agent", text: "Speak to a human" },
+      ])
+    } finally {
+      setIsTyping(false)
+    }
+  }
+
+  // Get contextual quick replies based on intent and message
+  const getContextualQuickReplies = (intent: string, message: string): { id: string; text: string }[] => {
+    const lowerMessage = message.toLowerCase()
+
+    // For destination queries, offer related information
+    if (lowerMessage.includes("gondar")) {
+      return [
+        { id: "gondar-attractions", text: "Attractions in Gondar" },
+        { id: "gondar-hotels", text: "Hotels in Gondar" },
+        { id: "gondar-restaurants", text: "Restaurants in Gondar" },
+        { id: "weather-gondar", text: "Weather in Gondar" },
+      ]
+    }
+
+    if (lowerMessage.includes("lalibela")) {
+      return [
+        { id: "lalibela-attractions", text: "Attractions in Lalibela" },
+        { id: "lalibela-hotels", text: "Hotels in Lalibela" },
+        { id: "lalibela-restaurants", text: "Restaurants in Lalibela" },
+        { id: "weather-lalibela", text: "Weather in Lalibela" },
+      ]
+    }
+
+    if (lowerMessage.includes("addis") || lowerMessage.includes("addis ababa")) {
+      return [
+        { id: "addis-attractions", text: "Attractions in Addis Ababa" },
+        { id: "addis-hotels", text: "Hotels in Addis Ababa" },
+        { id: "addis-restaurants", text: "Restaurants in Addis Ababa" },
+        { id: "weather-addis", text: "Weather in Addis Ababa" },
+      ]
+    }
+
+    // For visa queries
+    if (intent === "visa" || lowerMessage.includes("visa")) {
+      return [
+        { id: "visa-requirements", text: "Visa requirements" },
+        { id: "visa-application", text: "How to apply" },
+        { id: "visa-cost", text: "Visa costs" },
+        { id: "visa-duration", text: "Visa duration" },
+      ]
+    }
+
+    // For safety queries
+    if (intent === "safety" || lowerMessage.includes("safety") || lowerMessage.includes("safe")) {
+      return [
+        { id: "safety-general", text: "General safety tips" },
+        { id: "safety-health", text: "Health precautions" },
+        { id: "safety-areas", text: "Safe areas to visit" },
+        { id: "safety-emergency", text: "Emergency contacts" },
+      ]
+    }
+
+    // Default quick replies
     return [
       { id: "faq-visa", text: "Visa requirements" },
       { id: "faq-currency", text: "Currency information" },
@@ -114,335 +688,101 @@ export function Chatbot() {
   }
 
   const handleSendMessage = () => {
-    if (message.trim() === "") return
-
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: message,
-      sender: "user",
-      timestamp: new Date(),
-      type: "text",
-    }
-
-    setMessages((prev) => [...prev, userMessage])
-    setMessage("")
-    setIsTyping(true)
-
-    // Simulate bot thinking
-    setTimeout(() => {
-      handleBotResponse(message)
-      setIsTyping(false)
-    }, 1000)
-  }
-
-  const handleBotResponse = (userMessage: string) => {
-    const lowerCaseMessage = userMessage.toLowerCase()
-
-    // Check for FAQ keywords
-    for (const [keyword, response] of Object.entries(faqResponses)) {
-      if (lowerCaseMessage.includes(keyword)) {
-        addBotMessage(response)
-        return
-      }
-    }
-
-    // Check for weather requests
-    if (
-      lowerCaseMessage.includes("weather") ||
-      lowerCaseMessage.includes("temperature") ||
-      lowerCaseMessage.includes("forecast")
-    ) {
-      const locations = Object.keys(weatherData)
-      let foundLocation = null
-
-      for (const location of locations) {
-        if (lowerCaseMessage.includes(location.toLowerCase())) {
-          foundLocation = location
-          break
-        }
-      }
-
-      if (foundLocation) {
-        addWeatherUpdate(foundLocation)
-      } else {
-        addBotMessage("Which location would you like to check the weather for?")
-        addOptionsMessage([...locations.slice(0, 4).map((loc) => ({ id: `weather-${loc}`, text: loc }))])
-      }
-      return
-    }
-
-    // Check for itinerary adjustments
-    if (
-      lowerCaseMessage.includes("itinerary") ||
-      lowerCaseMessage.includes("schedule") ||
-      lowerCaseMessage.includes("plan") ||
-      lowerCaseMessage.includes("booking")
-    ) {
-      addBotMessage("I'd be happy to help with your itinerary. What would you like to adjust?")
-      addOptionsMessage([
-        { id: "itinerary-date", text: "Change dates" },
-        { id: "itinerary-add", text: "Add destination" },
-        { id: "itinerary-remove", text: "Remove destination" },
-        { id: "itinerary-view", text: "View my itinerary" },
-      ])
-      return
-    }
-
-    // Check for emergency assistance
-    if (
-      lowerCaseMessage.includes("emergency") ||
-      lowerCaseMessage.includes("help") ||
-      lowerCaseMessage.includes("urgent") ||
-      lowerCaseMessage.includes("danger")
-    ) {
-      addBotMessage(
-        "For emergencies, please contact our 24/7 support line at +251-911-123-456 or use the emergency button in the app. Would you like me to connect you with a human agent immediately?",
-      )
-      addOptionsMessage([
-        { id: "emergency-yes", text: "Yes, connect me" },
-        { id: "emergency-no", text: "No, just information" },
-      ])
-      return
-    }
-
-    // Check for human agent requests
-    if (
-      lowerCaseMessage.includes("human") ||
-      lowerCaseMessage.includes("agent") ||
-      lowerCaseMessage.includes("person") ||
-      lowerCaseMessage.includes("representative")
-    ) {
-      handleHumanRequest()
-      return
-    }
-
-    // Default responses
-    const defaultResponses = [
-      "I can help you with information about destinations in Ethiopia, weather updates, itinerary adjustments, and emergency assistance. What would you like to know?",
-      "Ethiopia has so much to offer! From the rock-hewn churches of Lalibela to the stunning landscapes of the Simien Mountains. How can I assist with your travel plans?",
-      "I'm here to make your Ethiopian adventure seamless. Would you like information about specific destinations, cultural tips, or travel logistics?",
-      "I can provide real-time updates on travel conditions, weather forecasts, and local events. What information would be most helpful for your trip?",
-    ]
-
-    const randomResponse = defaultResponses[Math.floor(Math.random() * defaultResponses.length)]
-    addBotMessage(randomResponse)
-
-    // Add quick reply options after default response
-    setTimeout(() => {
-      addOptionsMessage(getQuickReplies().map((reply) => ({ id: reply.id, text: reply.text })))
-    }, 500)
+    sendMessage(message)
   }
 
   const handleQuickReplyClick = (replyId: string) => {
-    // Handle different quick replies
-    if (replyId.startsWith("faq-")) {
-      const topic = replyId.replace("faq-", "")
-      const response = faqResponses[topic]
+    const reply = messages
+      .filter((m) => m.type === "options")
+      .flatMap((m) => m.data?.options || [])
+      .find((o) => o.id === replyId)
 
-      // Add user message showing what they clicked
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        content: `${topic.charAt(0).toUpperCase() + topic.slice(1)} information`,
-        sender: "user",
-        timestamp: new Date(),
-        type: "text",
-      }
+    // Handle authentication-related quick replies
+    if (replyId === "login") {
+      window.location.href = "/login"
+      return
+    } else if (replyId === "signup") {
+      window.location.href = "/signup"
+      return
+    } else if (replyId === "continue-browsing") {
+      toggleChat()
+      return
+    }
 
-      setMessages((prev) => [...prev, userMessage])
-
-      setTimeout(() => {
-        if (response) {
-          addBotMessage(response)
-        } else {
-          addBotMessage(`I don't have specific information about ${topic} yet, but I'm learning more every day!`)
-        }
-      }, 500)
-    } else if (replyId.startsWith("weather-")) {
+    // Handle weather-related quick replies
+    if (replyId.startsWith("weather-")) {
       const location = replyId.replace("weather-", "")
-
-      // Add user message
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        content: `Weather in ${location}`,
-        sender: "user",
-        timestamp: new Date(),
-        type: "text",
+      if (location === "check") {
+        handleWeatherCheck()
+      } else {
+        handleWeatherCheck(location)
       }
+      return
+    }
 
-      setMessages((prev) => [...prev, userMessage])
-
-      setTimeout(() => {
-        addWeatherUpdate(location)
-      }, 500)
-    } else if (replyId === "weather-check") {
-      // Add user message
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        content: "I'd like to check the weather",
-        sender: "user",
-        timestamp: new Date(),
-        type: "text",
+    if (reply) {
+      sendMessage(reply.text)
+    } else {
+      // Handle bottom quick replies
+      const quickReplyMap: Record<string, string> = {
+        "faq-visa": "Visa requirements",
+        "faq-currency": "Currency information",
+        "faq-safety": "Safety tips",
+        "weather-check": "Check weather",
+        "human-agent": "Speak to a human",
+        "itinerary-view": "View my itinerary",
       }
-
-      setMessages((prev) => [...prev, userMessage])
-
-      setTimeout(() => {
-        addBotMessage("Which location would you like to check the weather for?")
-        addOptionsMessage(Object.keys(weatherData).map((loc) => ({ id: `weather-${loc}`, text: loc })))
-      }, 500)
-    } else if (replyId.startsWith("itinerary-")) {
-      const action = replyId.replace("itinerary-", "")
-
-      // Add user message
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        content: `I want to ${action} my itinerary`,
-        sender: "user",
-        timestamp: new Date(),
-        type: "text",
+      const replyText = quickReplyMap[replyId]
+      if (replyText) {
+        sendMessage(replyText)
       }
-
-      setMessages((prev) => [...prev, userMessage])
-
-      // Handle different itinerary actions
-      setTimeout(() => {
-        if (action === "view") {
-          addItineraryMessage()
-        } else {
-          addBotMessage(`To ${action} your itinerary, please provide more details about what you'd like to change.`)
-        }
-      }, 500)
-    } else if (replyId === "human-agent") {
-      handleHumanRequest()
-    } else if (replyId.startsWith("emergency-")) {
-      const choice = replyId.replace("emergency-", "")
-
-      // Add user message
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        content: choice === "yes" ? "Yes, connect me with someone" : "No, just information please",
-        sender: "user",
-        timestamp: new Date(),
-        type: "text",
-      }
-
-      setMessages((prev) => [...prev, userMessage])
-
-      setTimeout(() => {
-        if (choice === "yes") {
-          handleHumanRequest()
-        } else {
-          addBotMessage(
-            "For emergency information: Our 24/7 emergency hotline is +251-911-123-456. In case of medical emergencies, the main hospitals in Addis Ababa are St. Paul's Hospital (+251-111-234-567) and Tikur Anbessa Hospital (+251-111-239-752). Embassy contacts are available in the 'Emergency Contacts' section of the app.",
-          )
-        }
-      }, 500)
     }
   }
 
   const handleHumanRequest = () => {
     setIsHumanRequested(true)
-
-    // Add system message
     const systemMessage: Message = {
-      id: Date.now().toString(),
+      id: `system-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       content: "Connecting you to a human agent. Please wait a moment...",
       sender: "system",
       timestamp: new Date(),
       type: "text",
     }
-
     setMessages((prev) => [...prev, systemMessage])
 
-    // Simulate waiting for human agent
+    // TODO: Integrate with backend endpoint for human agent handoff (e.g., POST /api/chatbot/request-human/)
     setTimeout(() => {
       const humanMessage: Message = {
-        id: Date.now().toString(),
+        id: `human-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         content: "Hi there! I'm Abebe from the EthioTravel support team. How can I assist you today?",
         sender: "bot",
         timestamp: new Date(),
         type: "text",
       }
-
       setMessages((prev) => [...prev, humanMessage])
+      addOptionsMessage([
+        { id: "faq-visa", text: "Visa requirements" },
+        { id: "faq-currency", text: "Currency information" },
+        { id: "faq-safety", text: "Safety tips" },
+        { id: "weather-check", text: "Check weather" },
+      ])
     }, 3000)
-  }
-
-  const addBotMessage = (content: string) => {
-    const botMessage: Message = {
-      id: Date.now().toString(),
-      content: content,
-      sender: "bot",
-      timestamp: new Date(),
-      type: "text",
-    }
-
-    setMessages((prev) => [...prev, botMessage])
-  }
-
-  const addWeatherUpdate = (location: string) => {
-    if (weatherData[location as keyof typeof weatherData]) {
-      const data = weatherData[location as keyof typeof weatherData]
-
-      const weatherMessage: Message = {
-        id: Date.now().toString(),
-        content: `Weather in ${location}`,
-        sender: "bot",
-        timestamp: new Date(),
-        type: "weather",
-        data: {
-          location,
-          ...data,
-        },
-      }
-
-      setMessages((prev) => [...prev, weatherMessage])
-    } else {
-      addBotMessage(`I'm sorry, I don't have weather information for ${location} at the moment.`)
-    }
-  }
-
-  const addItineraryMessage = () => {
-    // Simulated itinerary data
-    const itineraryMessage: Message = {
-      id: Date.now().toString(),
-      content: "Your current itinerary",
-      sender: "bot",
-      timestamp: new Date(),
-      type: "itinerary",
-      data: {
-        startDate: "2025-05-15",
-        endDate: "2025-05-22",
-        destinations: [
-          { name: "Addis Ababa", days: 2, hotel: "Sheraton Addis" },
-          { name: "Lalibela", days: 2, hotel: "Mountain View Hotel" },
-          { name: "Gondar", days: 1, hotel: "Goha Hotel" },
-          { name: "Bahir Dar", days: 2, hotel: "Kuriftu Resort" },
-        ],
-      },
-    }
-
-    setMessages((prev) => [...prev, itineraryMessage])
   }
 
   const addOptionsMessage = (options: { id: string; text: string }[]) => {
     const optionsMessage: Message = {
-      id: Date.now().toString(),
+      id: `options-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       content: "Options",
       sender: "bot",
       timestamp: new Date(),
       type: "options",
-      data: {
-        options,
-      },
+      data: { options },
     }
-
     setMessages((prev) => [...prev, optionsMessage])
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !isTyping) {
       handleSendMessage()
     }
   }
@@ -465,22 +805,42 @@ export function Chatbot() {
         return (
           <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
             <div className="font-bold flex items-center text-blue-700">
-              <Cloud className="h-4 w-4 mr-1" /> {message.data.location}
+              <MapPin className="h-4 w-4 mr-1" /> {message.data?.location || "Unknown Location"}
             </div>
             <div className="flex items-center justify-between mt-2 text-sm">
               <div className="text-center flex flex-col items-center">
+                <ThermometerSun className="h-8 w-8 text-amber-500 mb-1" />
                 <div className="text-xs text-gray-500">Temperature</div>
-                <div className="font-bold text-blue-800">{message.data.temp}</div>
+                <div className="font-bold text-blue-800">{message.data?.temp || "N/A"}</div>
               </div>
               <div className="text-center flex flex-col items-center">
+                <Cloud className="h-8 w-8 text-blue-500 mb-1" />
                 <div className="text-xs text-gray-500">Condition</div>
-                <div className="font-bold text-blue-800">{message.data.condition}</div>
+                <div className="font-bold text-blue-800">{message.data?.condition || "N/A"}</div>
               </div>
               <div className="text-center flex flex-col items-center">
+                <div className="h-8 w-8 flex items-center justify-center text-blue-400 mb-1">💧</div>
                 <div className="text-xs text-gray-500">Humidity</div>
-                <div className="font-bold text-blue-800">{message.data.humidity}</div>
+                <div className="font-bold text-blue-800">{message.data?.humidity || "N/A"}</div>
               </div>
             </div>
+
+            {message.data?.forecast && (
+              <div className="mt-3 pt-2 border-t border-blue-100">
+                <div className="text-xs font-medium text-blue-700 mb-1">Forecast</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {message.data.forecast.map((day: any, index: number) => (
+                    <div key={index} className="bg-white rounded p-1 text-xs">
+                      <div className="font-medium">{day.day}</div>
+                      <div className="flex justify-between items-center">
+                        <span>{day.temp}</span>
+                        <span className="text-gray-600">{day.condition}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )
 
@@ -491,17 +851,17 @@ export function Chatbot() {
               <Calendar className="h-4 w-4 mr-1" /> Your Itinerary
             </div>
             <div className="text-xs text-gray-500 mt-1">
-              {message.data.startDate} to {message.data.endDate}
+              {message.data?.startDate || "N/A"} to {message.data?.endDate || "N/A"}
             </div>
             <div className="mt-2 space-y-2">
-              {message.data.destinations.map((dest: any, index: number) => (
+              {(message.data?.destinations || []).map((dest: any, index: number) => (
                 <div key={index} className="flex justify-between items-center border-b border-green-100 pb-1">
                   <div>
-                    <div className="font-medium text-green-800">{dest.name}</div>
-                    <div className="text-xs text-gray-500">{dest.hotel}</div>
+                    <div className="font-medium text-green-800">{dest.name || "Unknown"}</div>
+                    <div className="text-xs text-gray-500">{dest.hotel || "N/A"}</div>
                   </div>
                   <Badge variant="outline" className="bg-green-100 text-green-800">
-                    {dest.days} {dest.days === 1 ? "day" : "days"}
+                    {dest.days || 0} {dest.days === 1 ? "day" : "days"}
                   </Badge>
                 </div>
               ))}
@@ -517,7 +877,7 @@ export function Chatbot() {
       case "options":
         return (
           <div className="grid grid-cols-2 gap-2 mt-2">
-            {message.data.options.map((option: { id: string; text: string }) => (
+            {(message.data?.options || []).map((option: { id: string; text: string }) => (
               <button
                 key={option.id}
                 onClick={() => handleQuickReplyClick(option.id)}
@@ -532,6 +892,17 @@ export function Chatbot() {
       default:
         return <p>{message.content}</p>
     }
+  }
+
+  // Show debug info for authentication state
+  const renderDebugInfo = () => {
+    if (process.env.NODE_ENV !== "development") return null
+
+    return (
+      <div className="absolute bottom-0 left-0 bg-black/80 text-white text-xs p-1 rounded-tr-md">
+        Auth: {isAuthenticated ? "✅" : "❌"} | Token: {getAuthToken() ? "✅" : "❌"} | User: {user?.username || "none"}
+      </div>
+    )
   }
 
   return (
@@ -644,8 +1015,14 @@ export function Chatbot() {
                       onKeyPress={handleKeyPress}
                       placeholder="Type your message..."
                       className="flex-grow shadow-sm"
+                      disabled={isTyping}
                     />
-                    <Button onClick={handleSendMessage} className="ml-2" size="icon" disabled={message.trim() === ""}>
+                    <Button
+                      onClick={handleSendMessage}
+                      className="ml-2"
+                      size="icon"
+                      disabled={message.trim() === "" || isTyping}
+                    >
                       <Send className="h-4 w-4" />
                     </Button>
                   </div>
@@ -686,6 +1063,9 @@ export function Chatbot() {
                     </div>
                   )}
                 </div>
+
+                {/* Debug info */}
+                {renderDebugInfo()}
               </>
             )}
           </div>
