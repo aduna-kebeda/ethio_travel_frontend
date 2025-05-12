@@ -5,10 +5,10 @@ import { motion } from "framer-motion"
 
 export const PartnersSection = () => {
   const partners = [
-    { name: "Emirates", logo: "/placeholder.svg?height=40&width=120&text=Emirates" },
-    { name: "Trivago", logo: "/placeholder.svg?height=40&width=120&text=Trivago" },
-    { name: "Airbnb", logo: "/placeholder.svg?height=40&width=120&text=Airbnb" },
-    { name: "Turkish Airlines", logo: "/placeholder.svg?height=40&width=120&text=Turkish+Airlines" },
+    { name: "visit ethiopia", image: "/assets/visit_ethio.jpg" },
+    { name: "visit oromia", image: "/assets/visit_oromia.jpg" },
+    { name: "zemen agency", image: "/assets/zemen_agency.png" },
+    { name: "fana travel", image: "/assets/fana.png" },
   ]
 
   return (
@@ -33,7 +33,7 @@ export const PartnersSection = () => {
               whileHover={{ scale: 1.1 }}
             >
               <NextImage
-                src={partner.logo}
+                src={partner.image}
                 alt={partner.name}
                 width={120}
                 height={40}

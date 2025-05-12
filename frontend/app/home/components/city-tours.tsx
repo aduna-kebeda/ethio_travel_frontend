@@ -12,10 +12,10 @@ export const CityTours = () => {
   }
 
   const cityImages = [
-    { label: "NEW", image: "/placeholder.svg?height=150&width=150&text=Festival", name: "Festival" },
-    { label: "NEW", image: "/placeholder.svg?height=150&width=150&text=Street", name: "Street" },
-    { label: "NEW", image: "/placeholder.svg?height=150&width=150&text=Market", name: "Market" },
-    { label: "NEW", image: "/placeholder.svg?height=150&width=150&text=Beach", name: "Beach" },
+    { label: "NEW", image: "/assets/irrechaa.jpg", name: "Festival" },
+    { label: "NEW", image: "/assets/street.jpg", name: "Street" },
+    { label: "NEW", image: "/assets/market.jpg", name: "Market" },
+    { label: "NEW", image: "/assets/beach.jpg", name: "Beach" },
   ]
 
   return (
@@ -78,13 +78,13 @@ export const CityTours = () => {
           >
             <div className="relative">
               <div className="absolute -left-4 top-1/2 transform -translate-y-1/2 bg-[#E91E63] text-white px-2 py-8 rounded-r-md flex flex-col items-center space-y-4 text-xs font-medium z-10">
-                <span className="transform -rotate-90">EVENTS</span>
-                <span className="transform -rotate-90">HIKING</span>
+                <span className="m-1 transform -rotate-90">EVENTS</span>
+                <span className=" m-1 transform -rotate-90">HIKING</span>
                 <span className="transform -rotate-90">CITY TOURS</span>
               </div>
               <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.3 }}>
                 <NextImage
-                  src="/placeholder.svg?height=600&width=800&text=Addis+Ababa+Night"
+                  src="/assets/sheger_night.jpg"
                   alt="Addis Ababa Night"
                   width={800}
                   height={600}

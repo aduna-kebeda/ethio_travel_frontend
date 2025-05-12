@@ -103,7 +103,7 @@ export const PopularPackages = () => {
         >
           <div className="absolute -left-4 bottom-0">
             <NextImage
-              src="/placeholder.svg?height=100&width=100&text=Shell"
+              src="/assets/ethio_shell.jpg"
               alt="Shell Decoration"
               width={100}
               height={100}
@@ -123,7 +123,7 @@ export const PopularPackages = () => {
 
             <div className="absolute -right-4 -top-8">
               <NextImage
-                src="/placeholder.svg?height=150&width=150&text=Photos"
+                src="/assets/travel4.jpg"
                 alt="Travel Photos"
                 width={150}
                 height={150}
