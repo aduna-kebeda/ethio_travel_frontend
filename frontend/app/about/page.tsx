@@ -3,6 +3,7 @@ import Link from "next/link"
 import { Play } from "lucide-react"
 import { Container } from "@/components/container"
 
+
 export default function AboutPage() {
   return (
     <div className="min-h-screen  bg-white">
@@ -150,28 +151,29 @@ export default function AboutPage() {
           </section>
 
           {/* Hiker Destinations */}
+         
           <section className="py-16">
             <div className="container mx-auto px-4">
               <h2 className="text-3xl font-bold text-center mb-12">Our Hiker Destinations</h2>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                  { name: "Blue Nile Falls", price: "$120" },
-                  { name: "Lalibela", price: "$180" },
-                  { name: "Danakil Depression", price: "$220" },
-                  { name: "Simien Mountains", price: "$150" },
-                  { name: "Omo Valley", price: "$190" },
-                  { name: "Gondar Castles", price: "$140" },
-                  { name: "Bale Mountains", price: "$170" },
-                  { name: "Awash National Park", price: "$130" },
-                  { name: "Harar", price: "$160" },
-                  { name: "Lake Tana", price: "$110" },
-                  { name: "Semien Mountains", price: "$200" },
-                  { name: "Tigray Churches", price: "$210" },
+                  { name: "Blue Nile Falls", price: "$120", image: "/assets/blue_nile.jpg" },
+                  { name: "Lalibela", price: "$180", image: "/assets/lalibela.jpg" },
+                  { name: "Aksum", price: "$160", image: "/assets/aksum_stone.jpg" },
+                  { name: "Danakil Depression", price: "$220", image: "/assets/denakil.jpg" },
+                  { name: "Omo Valley", price: "$190", image: "/assets/omo.jpg" },
+                  { name: "Gondar Castles", price: "$140", image: "/assets/gonder.jpg" },
+                  { name: "Bale Mountains", price: "$170", image: "/assets/bale.jpg" },
+                  { name: "Awash National Park", price: "$130", image: "/assets/awash.jpg" },
+                  { name: "Harar", price: "$160", image: "/assets/harar.jpg" },
+                  { name: "Lake Tana", price: "$110", image: "/assets/lake_tana.jpg" },
+                  { name: "Semien Mountains", price: "$200", image: "/assets/semien.jpg" },
+                  { name: "Tigray Churches", price: "$210", image: "/assets/tigray.jpg" },
                 ].map((destination, index) => (
                   <div key={index} className="relative h-48 rounded-lg overflow-hidden group">
                     <Image
-                      src={`/placeholder.svg?height=300&width=400&text=${destination.name.replace(" ", "+")}`}
+                      src={destination.image} // Corrected to use the actual image path
                       alt={destination.name}
                       fill
                       className="object-cover transition-transform duration-300 group-hover:scale-110"
