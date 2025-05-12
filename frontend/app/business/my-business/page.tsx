@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Container } from "@/components/container"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,43 +22,196 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { CheckCircle, Clock, Edit, Eye, MoreVertical, PlusCircle, Trash2, XCircle } from "lucide-react"
+import { useAuth } from "@/components/auth-provider"
+import { useToast } from "@/components/ui/use-toast"
+
+interface Business {
+  id: number
+  name: string
+  business_type: string
+  status: "approved" | "pending" | "rejected"
+  created_at: string
+  slug?: string
+  description?: string
+  contact_email?: string
+  contact_phone?: string
+  website?: string | null
+  region?: string
+  city?: string
+  address?: string
+  latitude?: string
+  longitude?: string
+  main_image?: string
+  gallery_images?: string
+  social_media_links?: string | object
+  opening_hours?: string
+  facilities?: string
+  services?: string
+  team?: string | any[]
+  is_verified?: boolean
+  is_featured?: boolean
+  verification_date?: string | null
+  average_rating?: string
+  total_reviews?: number
+  updated_at?: string
+}
 
 export default function MyBusinessPage() {
-  // Mock data - in a real app, this would come from an API
-  const [myBusinesses, setMyBusinesses] = useState([
-    {
-      id: "b1",
-      name: "Addis Ababa Tour Guide",
-      category: "Tour Guide",
-      status: "pending",
-      createdAt: "2023-11-15",
-    },
-    {
-      id: "b2",
-      name: "Ethiopian Souvenir Shop",
-      category: "Souvenir Shop",
-      status: "rejected",
-      createdAt: "2023-10-28",
-      rejectionReason:
-        "Insufficient business information provided. Please update your listing with more details about your products and services.",
-    },
-    {
-      id: "b3",
-      name: "Lalibela Guest House",
-      category: "Hotel",
-      status: "approved",
-      createdAt: "2023-09-05",
-    },
-  ])
+  const [myBusinesses, setMyBusinesses] = useState<Business[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { getAccessToken } = useAuth()
+  const { toast } = useToast()
+  const router = useRouter()
 
-  const handleDelete = (id: string) => {
-    setMyBusinesses((prev) => prev.filter((business) => business.id !== id))
+  // Memoize fetchBusinesses to ensure stability
+  const fetchBusinesses = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const token = getAccessToken()
+      if (!token) {
+        setError("You must be logged in to view your businesses. Please log in and try again.")
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to access your businesses.",
+          variant: "destructive",
+          action: <Button onClick={() => router.push("/login")}>Log In</Button>,
+        })
+        return
+      }
+
+      console.log("Fetching businesses with token:", token.substring(0, 10) + "...") // Debug log
+
+      const response = await fetch(
+        "https://ai-driven-travel.onrender.com/api/business/businesses/my-businesses/",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+        }
+      )
+
+      if (!response.ok) {
+        let errorMessage = "Failed to fetch businesses"
+        if (response.status === 401) {
+          errorMessage = "Unauthorized: Invalid or expired token. Please log in again."
+          toast({
+            title: "Unauthorized",
+            description: "Your session has expired. Please log in again.",
+            variant: "destructive",
+            action: <Button onClick={() => router.push("/login")}>Log In</Button>,
+          })
+        } else if (response.status === 403) {
+          errorMessage = "Forbidden: You do not have permission to access this resource."
+        } else if (response.status === 404) {
+          errorMessage = "No businesses found for your account."
+        }
+        throw new Error(errorMessage)
+      }
+
+      const data = await response.json()
+      console.log("API response:", data) // Debug log
+
+      if (!Array.isArray(data)) {
+        throw new Error("Unexpected API response: Expected an array of businesses")
+      }
+
+      setMyBusinesses(data)
+    } catch (error: any) {
+      console.error("Error fetching businesses:", error)
+      setError(error.message || "Failed to load businesses. Please try again later.")
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load businesses. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }, [getAccessToken, toast, router])
+
+  useEffect(() => {
+    fetchBusinesses()
+  }, [fetchBusinesses])
+
+  const handleDelete = async (id: number) => {
+    try {
+      const token = getAccessToken()
+      if (!token) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to delete a business.",
+          variant: "destructive",
+          action: <Button onClick={() => router.push("/login")}>Log In</Button>,
+        })
+        return
+      }
+
+      console.log("Deleting business with ID:", id, "with token:", token.substring(0, 10) + "...") // Debug log
+
+      const response = await fetch(
+        `https://ai-driven-travel.onrender.com/api/business/businesses/${id}/`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+        }
+      )
+
+      if (response.status === 204) {
+        // Successful deletion
+        setMyBusinesses((prev) => prev.filter((business) => business.id !== id))
+        toast({
+          title: "Success",
+          description: "Business deleted successfully.",
+        })
+      } else if (response.status === 404) {
+        throw new Error("Business not found. It may have already been deleted.")
+      } else if (response.status === 401) {
+        throw new Error("Unauthorized: Invalid or expired token. Please log in again.")
+      } else if (response.status === 403) {
+        throw new Error("Forbidden: You do not have permission to delete this business.")
+      } else {
+        throw new Error("Failed to delete business")
+      }
+    } catch (error: any) {
+      console.error("Error deleting business:", error)
+      let errorMessage = error.message || "Failed to delete business. Please try again."
+      if (error.message.includes("Unauthorized")) {
+        toast({
+          title: "Unauthorized",
+          description: "Your session has expired. Please log in again.",
+          variant: "destructive",
+          action: <Button onClick={() => router.push("/login")}>Log In</Button>,
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
+  const handlePreview = (id: number) => {
+    router.push(`/business/preview/${id}`)
+  }
+
+  const handleEdit = (id: number) => {
+    router.push(`/business/edit/${id}`)
   }
 
   const getStatusBadge = (status: string) => {
@@ -90,40 +244,44 @@ export default function MyBusinessPage() {
           </Badge>
         )
       default:
-        return null
+        return <Badge variant="outline">Unknown</Badge>
     }
   }
 
-  const renderRejectedListings = () => {
-    const rejectedBusinesses = myBusinesses.filter((b) => b.status === "rejected")
-
-    if (rejectedBusinesses.length === 0) return null
-
+  if (loading) {
     return (
-      <Card className="mt-6 border-red-100">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-red-700 text-lg">Rejected Listings</CardTitle>
-          <CardDescription>
-            The following listings were rejected. Please review the feedback and update your information.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {rejectedBusinesses.map((business) => (
-            <div key={business.id} className="p-4 bg-red-50 rounded-md mb-3 last:mb-0">
-              <h3 className="font-medium text-gray-900">{business.name}</h3>
-              <p className="text-sm text-gray-700 mt-1">
-                <span className="font-medium">Reason:</span> {business.rejectionReason}
-              </p>
-              <div className="mt-3">
-                <Button size="sm" variant="outline" className="h-8">
-                  <Edit className="mr-2 h-3 w-3" />
-                  Update Listing
-                </Button>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <Container className="py-10">
+        <div className="text-center">
+          <p>Loading your businesses...</p>
+        </div>
+      </Container>
+    )
+  }
+
+  if (error) {
+    return (
+      <Container className="py-10">
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle>Error</CardTitle>
+            <CardDescription>{error}</CardDescription>
+          </CardHeader>
+          <CardFooter className="flex justify-center gap-4 pt-2">
+            <Button onClick={() => fetchBusinesses()} className="bg-primary hover:bg-primary/90">
+              Try Again
+            </Button>
+            {error.includes("log in") && (
+              <Button
+                variant="outline"
+                onClick={() => router.push("/login")}
+                className="border-primary text-primary hover:bg-primary/10"
+              >
+                Log In
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
+      </Container>
     )
   }
 
@@ -180,9 +338,9 @@ export default function MyBusinessPage() {
                   {myBusinesses.map((business) => (
                     <TableRow key={business.id}>
                       <TableCell className="font-medium">{business.name}</TableCell>
-                      <TableCell>{business.category}</TableCell>
+                      <TableCell>{business.business_type}</TableCell>
                       <TableCell>{getStatusBadge(business.status)}</TableCell>
-                      <TableCell>{business.createdAt}</TableCell>
+                      <TableCell>{new Date(business.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -194,18 +352,21 @@ export default function MyBusinessPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handlePreview(business.id)}>
                               <Eye className="mr-2 h-4 w-4" />
                               <span>Preview</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEdit(business.id)}>
                               <Edit className="mr-2 h-4 w-4" />
                               <span>Edit</span>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
+                                <DropdownMenuItem
+                                  onSelect={(e) => e.preventDefault()}
+                                  className="text-red-600"
+                                >
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   <span>Delete</span>
                                 </DropdownMenuItem>
@@ -217,7 +378,7 @@ export default function MyBusinessPage() {
                                     This will permanently delete your business listing. This action cannot be undone.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
-                                <AlertDialogFooter>
+                                <div className="flex justify-end gap-2">
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                                   <AlertDialogAction
                                     className="bg-red-600 hover:bg-red-700"
@@ -225,7 +386,7 @@ export default function MyBusinessPage() {
                                   >
                                     Delete
                                   </AlertDialogAction>
-                                </AlertDialogFooter>
+                                </div>
                               </AlertDialogContent>
                             </AlertDialog>
                           </DropdownMenuContent>
@@ -238,8 +399,6 @@ export default function MyBusinessPage() {
             </CardContent>
           </Card>
         )}
-
-        {renderRejectedListings()}
       </div>
     </Container>
   )
