@@ -12,13 +12,27 @@ import { useAuth } from "@/components/auth-provider"
 type Message = {
   id: string
   text: string
-  sender: "user" | "bot"
+  sender: "user" | "bot" | "system"
   timestamp: Date
 }
 
 type QuickReply = {
   id: string
   text: string
+}
+
+// Function to generate a proper UUID v4
+function generateUUID() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+
+  // Fallback implementation for older browsers
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === "x" ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
 }
 
 export default function ChatbotPage() {
@@ -33,9 +47,7 @@ export default function ChatbotPage() {
 
   // API base URL
   const API_BASE_URL = "https://ai-driven-travel.onrender.com/api/chatbot"
-  // JWT token (replace with actual token retrieval mechanism)
-  // Change this:
-  // To this:
+
   const getAuthToken = () => {
     return getAccessToken()
   }
@@ -65,11 +77,21 @@ export default function ChatbotPage() {
         return
       }
 
+      // Check for existing session ID in localStorage
       const storedSessionId = localStorage.getItem("chatbot_session_id")
-      if (storedSessionId) {
+
+      // Validate if it's a proper UUID
+      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storedSessionId || "")
+
+      if (storedSessionId && isValidUUID) {
         setSessionId(storedSessionId)
         await fetchConversationHistory(storedSessionId)
       } else {
+        // Generate a proper UUID for the session
+        const newSessionId = generateUUID()
+        setSessionId(newSessionId)
+        localStorage.setItem("chatbot_session_id", newSessionId)
+
         // Start a new session with an initial message
         await sendMessage("Hello", false)
       }
@@ -124,16 +146,23 @@ export default function ChatbotPage() {
       } else {
         const errorData = await response.json()
         console.error("Error fetching history:", errorData.error)
+
         if (response.status === 403 || response.status === 404) {
           localStorage.removeItem("chatbot_session_id")
           setSessionId(null)
+
+          // Generate a proper UUID for the session
+          const newSessionId = generateUUID()
+          setSessionId(newSessionId)
+          localStorage.setItem("chatbot_session_id", newSessionId)
+
           await sendMessage("Hello", false)
         } else {
           setMessages((prev) => [
             ...prev,
             {
               id: Date.now().toString(),
-              text: `Failed to load conversation history: ${errorData.error}`,
+              text: `Failed to load conversation history. Please try again later.`,
               sender: "bot",
               timestamp: new Date(),
             },
@@ -199,6 +228,13 @@ export default function ChatbotPage() {
         return
       }
 
+      // Ensure we have a valid session ID (UUID format)
+      if (!sessionId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
+        const newSessionId = generateUUID()
+        setSessionId(newSessionId)
+        localStorage.setItem("chatbot_session_id", newSessionId)
+      }
+
       const response = await fetch(`${API_BASE_URL}/message/message/`, {
         method: "POST",
         headers: {
@@ -208,7 +244,7 @@ export default function ChatbotPage() {
         },
         body: JSON.stringify({
           message: messageText,
-          session_id: sessionId || undefined,
+          session_id: sessionId,
         }),
       })
 
@@ -221,8 +257,16 @@ export default function ChatbotPage() {
           timestamp: new Date(data.response.timestamp),
         }
         setMessages((prev) => [...prev, botMessage])
-        setSessionId(data.session_id)
-        localStorage.setItem("chatbot_session_id", data.session_id)
+
+        // Only update session ID if it's different and valid
+        if (
+          data.session_id &&
+          data.session_id !== sessionId &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.session_id)
+        ) {
+          setSessionId(data.session_id)
+          localStorage.setItem("chatbot_session_id", data.session_id)
+        }
 
         // Set quick replies from API response (assuming suggestions are provided)
         const newQuickReplies = data.response.suggestions
@@ -239,30 +283,54 @@ export default function ChatbotPage() {
             ]
         setQuickReplies(newQuickReplies)
       } else {
-        const errorData = await response.json()
-        console.error("Error sending message:", errorData.error)
-        const errorMessage: Message = {
-          id: Date.now().toString(),
-          text: `Error: ${errorData.error || "Something went wrong. Please try again."}`,
-          sender: "bot",
-          timestamp: new Date(),
+        const errorText = await response.text()
+        console.error("Error sending message:", errorText)
+
+        if (errorText && errorText.includes("Must be a valid UUID")) {
+          // Handle UUID validation error
+          const newSessionId = generateUUID()
+          setSessionId(newSessionId)
+          localStorage.setItem("chatbot_session_id", newSessionId)
+
+          // Try sending the message again with the new session ID
+          setTimeout(() => {
+            sendMessage(messageText, false)
+          }, 500)
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              text: "Reconnecting to chat service...",
+              sender: "system",
+              timestamp: new Date(),
+            },
+          ])
+        } else {
+          const errorMessage: Message = {
+            id: Date.now().toString(),
+            text: "I'm having trouble processing your request. Let me try again.",
+            sender: "system",
+            timestamp: new Date(),
+          }
+          setMessages((prev) => [...prev, errorMessage])
+
+          // Set default quick replies on error
+          setQuickReplies([
+            { id: "qr1", text: "Visa requirements" },
+            { id: "qr2", text: "Currency information" },
+            { id: "qr3", text: "Safety tips" },
+            { id: "qr4", text: "Check weather" },
+            { id: "qr5", text: "Speak to a human" },
+          ])
         }
-        setMessages((prev) => [...prev, errorMessage])
-        // Set default quick replies on error
-        setQuickReplies([
-          { id: "qr1", text: "Visa requirements" },
-          { id: "qr2", text: "Currency information" },
-          { id: "qr3", text: "Safety tips" },
-          { id: "qr4", text: "Check weather" },
-          { id: "qr5", text: "Speak to a human" },
-        ])
       }
     } catch (error) {
       console.error("Network error:", error)
       const errorMessage: Message = {
         id: Date.now().toString(),
         text: "Network error. Please check your connection and try again.",
-        sender: "bot",
+        sender: "system",
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, errorMessage])
@@ -323,21 +391,27 @@ export default function ChatbotPage() {
           {messages.map((message) => (
             <motion.div
               key={message.id}
-              className={`mb-4 flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+              className={`mb-4 flex ${message.sender === "user" ? "justify-end" : message.sender === "system" ? "justify-center" : "justify-start"}`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <div
-                className={`rounded-lg px-4 py-2 max-w-[80%] ${
-                  message.sender === "user" ? "bg-[#E91E63] text-white" : "bg-white shadow-sm"
-                }`}
-              >
-                <p>{message.text}</p>
-                <p className="text-xs opacity-70 mt-1">
-                  {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </p>
-              </div>
+              {message.sender === "system" ? (
+                <div className="rounded-lg px-4 py-2 max-w-[80%] bg-gray-100 text-gray-600 text-sm">
+                  <p>{message.text}</p>
+                </div>
+              ) : (
+                <div
+                  className={`rounded-lg px-4 py-2 max-w-[80%] ${
+                    message.sender === "user" ? "bg-[#E91E63] text-white" : "bg-white shadow-sm"
+                  }`}
+                >
+                  <p>{message.text}</p>
+                  <p className="text-xs opacity-70 mt-1">
+                    {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+              )}
             </motion.div>
           ))}
 

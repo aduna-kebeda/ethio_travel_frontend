@@ -153,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // First try localStorage (more reliable in development)
     if (typeof window !== "undefined") {
       const localStorageToken = localStorage.getItem("access_token")
-      if (localStorageToken) {
+      if (localStorageToken && localStorageToken !== "undefined" && localStorageToken !== "null") {
         return localStorageToken
       }
 
@@ -162,7 +162,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const cookies = document.cookie.split(";")
         const tokenCookie = cookies.find((cookie) => cookie.trim().startsWith("access_token="))
         if (tokenCookie) {
-          return tokenCookie.split("=")[1].trim()
+          const token = tokenCookie.split("=")[1].trim()
+          if (token && token !== "undefined" && token !== "null") {
+            return token
+          }
         }
       } catch (error) {
         console.error("Error retrieving access token from cookies:", error)
