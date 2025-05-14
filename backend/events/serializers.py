@@ -15,13 +15,13 @@ class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = [
-            'id', 'organizer', 'title', 'slug', 'description', 'category',
-            'location', 'address', 'latitude', 'longitude', 'start_date', 'end_date', 
-            'images', 'capacity', 'current_attendees', 'price', 'featured', 
-            'status', 'rating', 'created_at', 'updated_at'
+            'id', 'organizer', 'title', 'slug', 'description', 'category', 'location',
+            'address', 'latitude', 'longitude', 'start_date', 'end_date', 'images',
+            'capacity', 'current_attendees', 'price', 'featured', 'status', 'rating',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'organizer', 'slug', 'current_attendees',
-                           'rating', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'organizer', 'slug', 'current_attendees', 'rating', 'created_at', 'updated_at']
+        ref_name = 'EventSerializer'
 
     def create(self, validated_data):
         validated_data['organizer'] = self.context['request'].user
@@ -30,10 +30,13 @@ class EventSerializer(serializers.ModelSerializer):
 class EventListSerializer(EventSerializer):
     class Meta(EventSerializer.Meta):
         fields = [
-            'id', 'title', 'slug', 'category', 'location', 'start_date',
-            'end_date', 'images', 'featured', 'status', 'current_attendees', 'rating'
+            'id', 'organizer', 'title', 'slug', 'description', 'category', 'location',
+            'address', 'latitude', 'longitude', 'start_date', 'end_date', 'images',
+            'capacity', 'current_attendees', 'price', 'featured', 'status', 'rating',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'slug', 'status', 'current_attendees', 'rating']
+        read_only_fields = ['id', 'organizer', 'slug', 'current_attendees', 'rating', 'created_at', 'updated_at']
+        ref_name = 'EventListSerializer'
 
 class EventDetailSerializer(EventSerializer):
     reviews = serializers.SerializerMethodField()
@@ -41,6 +44,7 @@ class EventDetailSerializer(EventSerializer):
     
     class Meta(EventSerializer.Meta):
         fields = EventSerializer.Meta.fields + ['reviews', 'registrations']
+        ref_name = 'EventDetailSerializer'
     
     def get_reviews(self, obj):
         reviews = obj.reviews.all().order_by('-created_at')[:5]
@@ -60,6 +64,7 @@ class EventReviewSerializer(serializers.ModelSerializer):
             'helpful', 'reported', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'user', 'helpful', 'reported', 'created_at', 'updated_at']
+        ref_name = 'EventReviewSerializer'
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
@@ -72,6 +77,7 @@ class EventRegistrationSerializer(serializers.ModelSerializer):
         model = EventRegistration
         fields = ['id', 'event', 'user', 'status', 'created_at', 'updated_at']
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+        ref_name = 'EventRegistrationSerializer'
     
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
@@ -85,6 +91,7 @@ class SavedEventSerializer(serializers.ModelSerializer):
         model = SavedEvent
         fields = ['id', 'user', 'event', 'created_at']
         read_only_fields = ['id', 'user', 'created_at']
+        ref_name = 'SavedEventSerializer'
     
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
@@ -95,3 +102,13 @@ class EventSubscriptionSerializer(serializers.ModelSerializer):
         model = EventSubscription
         fields = ['id', 'email', 'categories', 'created_at']
         read_only_fields = ['id', 'created_at']
+        ref_name = 'EventSubscriptionSerializer'
+
+    def validate_categories(self, value):
+        valid_categories = [choice[0] for choice in Event.CATEGORY_CHOICES]
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Categories must be a list")
+        for category in value:
+            if category not in valid_categories:
+                raise serializers.ValidationError(f"Invalid category: {category}. Valid categories are: {', '.join(valid_categories)}")
+        return value

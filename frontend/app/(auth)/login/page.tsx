@@ -1,89 +1,105 @@
-"use client"
+// app/login/page.tsx
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
-import { signIn } from "next-auth/react"
-import { Eye, EyeOff, Loader2 } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { AuthLayout } from "@/components/auth-layout"
-import { loginUser } from "@/app/actions/auth-actions"
-import { useAuth } from "@/components/auth-provider"
+import type React from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AuthLayout } from "@/components/auth-layout";
+import { loginUser } from "@/app/actions/auth-actions";
+import { useAuth } from "@/components/auth-provider";
 
 export default function LoginPage() {
-  const router = useRouter()
-  const { login } = useAuth()
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [rememberMe, setRememberMe] = useState(false)
+  const router = useRouter();
+  const { login } = useAuth();
+  const { status } = useSession();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/home";
+  const errorParam = searchParams.get("error");
 
-  const searchParams = useSearchParams()
-  const redirect = searchParams.get("redirect") || "/home"
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(errorParam || "");
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+
+  // Redirect if authenticated
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.push(redirect);
+    }
+  }, [status, router, redirect]);
+
+  // Update error state if error query param changes
+  useEffect(() => {
+    if (errorParam) {
+      setError(
+        errorParam === "Callback"
+          ? "Failed to sign in with Google. Please try again or contact support."
+          : errorParam
+      );
+    }
+  }, [errorParam]);
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
     try {
       const result = await loginUser({
         email,
         password,
-      })
+      });
 
       if (!result.success) {
-        setError(result.error || "Invalid email or password")
-        setIsLoading(false)
-        return
+        setError(result.error || "Invalid email or password");
+        setIsLoading(false);
+        return;
       }
 
-      // Update auth context
       if (result.data?.user) {
-        login(result.data.user)
-
-        // Force a small delay to ensure cookies are set before redirect
-        setTimeout(() => {
-          router.push(redirect)
-        }, 100)
+        login(result.data.user);
+        router.push(redirect);
       } else {
-        setError("Login successful but user data is missing")
-        setIsLoading(false)
+        setError("Login successful but user data is missing");
+        setIsLoading(false);
       }
     } catch (error) {
-      console.error("Login error:", error)
-      setError("Something went wrong. Please try again.")
-      setIsLoading(false)
+      console.error("Login error:", error);
+      setError("Something went wrong. Please try again.");
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleGoogleLogin = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
+    setError("");
     try {
       const result = await signIn("google", {
         redirect: false,
         callbackUrl: redirect,
-      })
+      });
 
       if (result?.error) {
-        setError("Failed to sign in with Google. Please try again.")
-        setIsLoading(false)
+        setError(`Failed to sign in with Google: ${result.error}`);
+        setIsLoading(false);
+        return;
       }
-      // The redirect will be handled by NextAuth
+      // Redirect is handled by useSession useEffect
     } catch (error) {
-      console.error("Google sign in error:", error)
-      setError("Failed to sign in with Google. Please try again.")
-      setIsLoading(false)
+      console.error("Google sign-in error:", error);
+      setError("Failed to sign in with Google. Please try again.");
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <AuthLayout>
@@ -93,7 +109,9 @@ export default function LoginPage() {
         </Link>
       </div>
       <h2 className="mt-6 text-3xl font-bold tracking-tight text-center">Login</h2>
-      <p className="mt-2 text-sm text-muted-foreground text-center">Login to access your EthioTravel account</p>
+      <p className="mt-2 text-sm text-muted-foreground text-center">
+        Login to access your EthioTravel account
+      </p>
 
       {error && <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-500">{error}</div>}
 
@@ -190,7 +208,12 @@ export default function LoginPage() {
             </div>
 
             <div className="mt-6">
-              <Button variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={isLoading}>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleGoogleLogin}
+                disabled={isLoading}
+              >
                 {isLoading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -216,7 +239,7 @@ export default function LoginPage() {
           </div>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
+            Don’t have an account?{" "}
             <Link href="/signup" className="font-medium text-[#E91E63] hover:text-[#D81B60]">
               Sign up
             </Link>
@@ -224,5 +247,5 @@ export default function LoginPage() {
         </div>
       </div>
     </AuthLayout>
-  )
+  );
 }

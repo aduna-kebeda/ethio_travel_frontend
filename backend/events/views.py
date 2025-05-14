@@ -28,6 +28,8 @@ class EventViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == 'list':
+            if self.request.query_params.get('full_details', 'false').lower() == 'true':
+                return EventSerializer
             return EventListSerializer
         elif self.action == 'retrieve':
             return EventDetailSerializer
@@ -62,7 +64,15 @@ class EventViewSet(viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         tags=['Events'],
-        operation_description="List all published events",
+        operation_description="List all published events. Use ?full_details=true to include all fields.",
+        manual_parameters=[
+            openapi.Parameter(
+                'full_details',
+                openapi.IN_QUERY,
+                description="Return all fields if true",
+                type=openapi.TYPE_BOOLEAN
+            )
+        ],
         responses={
             200: EventListSerializer(many=True)
         }
@@ -318,6 +328,10 @@ class EventViewSet(viewsets.ModelViewSet):
             event.status = 'published'
         elif event.status == 'published':
             event.status = 'cancelled'
+        elif event.status == 'cancelled':
+            event.status = 'draft'
+        elif event.status == 'completed':
+            event.status = 'draft'
         event.save()
         return Response({'status': event.status})
 
@@ -554,12 +568,12 @@ class EventSubscriptionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return EventSubscription.objects.none()
-        return self.queryset.filter(user=self.request.user)
+        return self.queryset.filter(email=self.request.user.email)
 
     def perform_create(self, serializer):
         if getattr(self, 'swagger_fake_view', False):
             return
-        serializer.save(user=self.request.user)
+        serializer.save(email=self.request.user.email)
 
     @swagger_auto_schema(
         tags=['Events'],
@@ -571,7 +585,15 @@ class EventSubscriptionViewSet(viewsets.ModelViewSet):
         }
     )
     def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        try:
+            return super().create(request, *args, **kwargs)
+        except serializers.ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     @swagger_auto_schema(
         tags=['Events'],
