@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status, filters, permissions
+from rest_framework import viewsets, status, filters, permissions, serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
@@ -42,6 +42,76 @@ class DestinationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user if self.request.user.is_authenticated else None)
 
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="List all active destinations",
+        responses={200: DestinationSerializer(many=True)},
+        manual_parameters=[
+            openapi.Parameter('category', openapi.IN_QUERY, type=openapi.TYPE_STRING, description="Filter by category"),
+            openapi.Parameter('region', openapi.IN_QUERY, type=openapi.TYPE_STRING, description="Filter by region"),
+            openapi.Parameter('city', openapi.IN_QUERY, type=openapi.TYPE_STRING, description="Filter by city"),
+            openapi.Parameter('featured', openapi.IN_QUERY, type=openapi.TYPE_BOOLEAN, description="Filter by featured status"),
+            openapi.Parameter('status', openapi.IN_QUERY, type=openapi.TYPE_STRING, description="Filter by status"),
+            openapi.Parameter('search', openapi.IN_QUERY, type=openapi.TYPE_STRING, description="Search by title, description, or city"),
+            openapi.Parameter('ordering', openapi.IN_QUERY, type=openapi.TYPE_STRING, description="Order by rating, review_count, or created_at"),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="Retrieve a single destination",
+        responses={200: DestinationDetailSerializer}
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="Create a new destination",
+        request_body=DestinationSerializer,
+        responses={201: DestinationSerializer, 400: "Bad Request", 401: "Unauthorized"}
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="Update a destination",
+        request_body=DestinationSerializer,
+        responses={200: DestinationSerializer, 400: "Bad Request", 401: "Unauthorized", 403: "Forbidden"}
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="Partially update a destination",
+        request_body=DestinationSerializer,
+        responses={200: DestinationSerializer, 400: "Bad Request", 401: "Unauthorized", 403: "Forbidden"}
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="Delete a destination",
+        responses={204: "No Content", 401: "Unauthorized", 403: "Forbidden"}
+    )
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="Add a review to a destination",
+        request_body=DestinationReviewSerializer,
+        responses={
+            201: DestinationReviewSerializer,
+            400: openapi.Response(description="Bad Request", examples={"application/json": {"error": "You have already reviewed this destination"}}),
+            401: "Unauthorized"
+        }
+    )
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def add_review(self, request, pk=None):
         destination = self.get_object()
@@ -56,6 +126,14 @@ class DestinationViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="List reviews for a destination",
+        manual_parameters=[
+            openapi.Parameter('sort_by', openapi.IN_QUERY, type=openapi.TYPE_STRING, enum=['rating', 'helpful', 'created_at'], description="Sort reviews by rating, helpful count, or creation date")
+        ],
+        responses={200: DestinationReviewSerializer(many=True)}
+    )
     @action(detail=True, methods=['get'])
     def reviews(self, request, pk=None):
         destination = self.get_object()
@@ -66,6 +144,21 @@ class DestinationViewSet(viewsets.ModelViewSet):
         serializer = DestinationReviewSerializer(reviews, many=True)
         return Response(serializer.data)
 
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="Toggle the featured status of a destination",
+        responses={
+            200: openapi.Response(
+                description="Success",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={'featured': openapi.Schema(type=openapi.TYPE_BOOLEAN)}
+                )
+            ),
+            401: "Unauthorized",
+            403: "Forbidden"
+        }
+    )
     @action(detail=True, methods=['post'])
     def toggle_featured(self, request, pk=None):
         destination = self.get_object()
@@ -73,6 +166,21 @@ class DestinationViewSet(viewsets.ModelViewSet):
         destination.save()
         return Response({'featured': destination.featured})
 
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="Toggle the status of a destination between active and draft",
+        responses={
+            200: openapi.Response(
+                description="Success",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={'status': openapi.Schema(type=openapi.TYPE_STRING)}
+                )
+            ),
+            401: "Unauthorized",
+            403: "Forbidden"
+        }
+    )
     @action(detail=True, methods=['post'])
     def toggle_status(self, request, pk=None):
         destination = self.get_object()
@@ -80,6 +188,15 @@ class DestinationViewSet(viewsets.ModelViewSet):
         destination.save()
         return Response({'status': destination.status})
 
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="Save a destination to the user's saved list",
+        responses={
+            201: SavedDestinationSerializer,
+            400: openapi.Response(description="Bad Request", examples={"application/json": {"error": "Destination is already saved"}}),
+            401: "Unauthorized"
+        }
+    )
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def save(self, request, pk=None):
         destination = self.get_object()
@@ -91,6 +208,21 @@ class DestinationViewSet(viewsets.ModelViewSet):
         serializer = SavedDestinationSerializer(saved_destination)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="Remove a destination from the user's saved list",
+        responses={
+            200: openapi.Response(
+                description="Success",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={'message': openapi.Schema(type=openapi.TYPE_STRING)}
+                )
+            ),
+            400: openapi.Response(description="Bad Request", examples={"application/json": {"error": "Destination is not saved"}}),
+            401: "Unauthorized"
+        }
+    )
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def unsave(self, request, pk=None):
         destination = self.get_object()
@@ -99,6 +231,11 @@ class DestinationViewSet(viewsets.ModelViewSet):
             return Response({'message': 'Destination removed from saved list'})
         return Response({'error': 'Destination is not saved'}, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="List the user's saved destinations",
+        responses={200: SavedDestinationSerializer(many=True), 401: "Unauthorized"}
+    )
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def saved(self, request):
         saved_destinations = SavedDestination.objects.filter(user=self.request.user)
@@ -122,15 +259,64 @@ class DestinationReviewViewSet(viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         tags=['Destinations'],
+        operation_description="List reviews for a specific destination",
+        responses={200: DestinationReviewSerializer(many=True)}
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="Retrieve a specific review for a destination",
+        responses={200: DestinationReviewSerializer}
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="Create a new review for a destination",
+        request_body=DestinationReviewSerializer,
+        responses={201: DestinationReviewSerializer, 400: "Bad Request", 401: "Unauthorized"}
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="Update a review for a destination",
+        request_body=DestinationReviewSerializer,
+        responses={200: DestinationReviewSerializer, 400: "Bad Request", 401: "Unauthorized", 403: "Forbidden"}
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="Partially update a review for a destination",
+        request_body=DestinationReviewSerializer,
+        responses={200: DestinationReviewSerializer, 400: "Bad Request", 401: "Unauthorized", 403: "Forbidden"}
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Destinations'],
+        operation_description="Delete a review for a destination",
+        responses={204: "No Content", 401: "Unauthorized", 403: "Forbidden"}
+    )
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Destinations'],
         operation_description="Mark review as helpful",
         responses={
             200: openapi.Response(
                 description="Success",
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
-                    properties={
-                        'helpful': openapi.Schema(type=openapi.TYPE_INTEGER)
-                    }
+                    properties={'helpful': openapi.Schema(type=openapi.TYPE_INTEGER)}
                 )
             )
         }
@@ -150,9 +336,7 @@ class DestinationReviewViewSet(viewsets.ModelViewSet):
                 description="Success",
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
-                    properties={
-                        'reported': openapi.Schema(type=openapi.TYPE_BOOLEAN)
-                    }
+                    properties={'reported': openapi.Schema(type=openapi.TYPE_BOOLEAN)}
                 )
             )
         }
@@ -181,3 +365,58 @@ class SavedDestinationViewSet(viewsets.ModelViewSet):
         if SavedDestination.objects.filter(user=self.request.user, destination=destination).exists():
             raise serializers.ValidationError('Destination is already saved')
         serializer.save(user=self.request.user, destination=destination)
+
+    @swagger_auto_schema(
+        tags=['Saved Destinations'],
+        operation_description="List the user's saved destinations",
+        responses={200: SavedDestinationSerializer(many=True), 401: "Unauthorized"}
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Saved Destinations'],
+        operation_description="Retrieve a specific saved destination",
+        responses={200: SavedDestinationSerializer, 401: "Unauthorized"}
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Saved Destinations'],
+        operation_description="Create a new saved destination",
+        request_body=SavedDestinationSerializer,
+        responses={
+            201: SavedDestinationSerializer,
+            400: openapi.Response(description="Bad Request", examples={"application/json": {"detail": "Destination is already saved"}}),
+            401: "Unauthorized"
+        }
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Saved Destinations'],
+        operation_description="Update a saved destination",
+        request_body=SavedDestinationSerializer,
+        responses={200: SavedDestinationSerializer, 400: "Bad Request", 401: "Unauthorized"}
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Saved Destinations'],
+        operation_description="Partially update a saved destination",
+        request_body=SavedDestinationSerializer,
+        responses={200: SavedDestinationSerializer, 400: "Bad Request", 401: "Unauthorized"}
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        tags=['Saved Destinations'],
+        operation_description="Delete a saved destination",
+        responses={204: "No Content", 401: "Unauthorized"}
+    )
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
