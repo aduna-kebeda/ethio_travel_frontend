@@ -1,4 +1,3 @@
-# destinations/serializers.py
 from rest_framework import serializers
 from django.core.validators import URLValidator
 from .models import Destination, DestinationReview, SavedDestination
@@ -8,7 +7,13 @@ from decimal import Decimal
 class DestinationSerializer(serializers.ModelSerializer):
     images = serializers.ListField(
         child=serializers.CharField(validators=[URLValidator()]),
-        help_text="A list of image URLs"
+        help_text="A list of primary image URLs",
+        required=False
+    )
+    gallery_images = serializers.ListField(
+        child=serializers.CharField(validators=[URLValidator()]),
+        help_text="A list of gallery image URLs",
+        required=False
     )
     latitude = serializers.CharField(allow_null=True, required=False)
     longitude = serializers.CharField(allow_null=True, required=False)
@@ -18,7 +23,7 @@ class DestinationSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'title', 'slug', 'description', 'category', 'region',
             'city', 'address', 'latitude', 'longitude', 'featured', 'status',
-            'rating', 'review_count', 'images', 'created_at', 'updated_at'
+            'rating', 'review_count', 'images', 'gallery_images', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'user', 'slug', 'rating', 'review_count', 'created_at', 'updated_at']
     

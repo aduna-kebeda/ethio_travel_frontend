@@ -1,4 +1,3 @@
-# destinations/models.py
 from django.db import models
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
@@ -56,7 +55,8 @@ class Destination(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.0)
     review_count = models.IntegerField(default=0)
-    images = models.JSONField(default=list)  # List of image URLs
+    images = models.JSONField(default=list)  # List of primary image URLs
+    gallery_images = models.JSONField(default=list)  # List of gallery image URLs
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
