@@ -1,12 +1,25 @@
+# destinations/admin.py
 from django.contrib import admin
+from django import forms
 from .models import Destination, DestinationReview, SavedDestination
+
+class DestinationAdminForm(forms.ModelForm):
+    images = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 3}),
+        help_text="Enter a JSON list of image URLs, e.g., [\"url1\", \"url2\"]"
+    )
+
+    class Meta:
+        model = Destination
+        fields = '__all__'
 
 @admin.register(Destination)
 class DestinationAdmin(admin.ModelAdmin):
+    form = DestinationAdminForm
     list_display = ('title', 'category', 'region', 'city', 'featured', 'rating', 'review_count')
     list_filter = ('category', 'region', 'featured', 'status')
     search_fields = ('title', 'description', 'address')
-    readonly_fields = ('slug', 'rating', 'review_count')
+    readonly_fields = ('slug', 'rating', 'review_count', 'created_at', 'updated_at')
     
     fieldsets = (
         ('Basic Information', {

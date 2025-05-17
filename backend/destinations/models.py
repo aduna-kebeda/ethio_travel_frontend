@@ -1,3 +1,4 @@
+# destinations/models.py
 from django.db import models
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
@@ -40,22 +41,22 @@ class Destination(models.Model):
         ('inactive', 'Inactive'),
     )
     
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # Ensures UUIDField is used
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='destinations', null=True, blank=True)
     title = models.CharField(max_length=200)
-    slug = models.SlugField(unique=True)
+    slug = models.SlugField(unique=True, blank=True)
     description = models.TextField()
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
     region = models.CharField(max_length=20, choices=REGION_CHOICES)
     city = models.CharField(max_length=100)
     address = models.TextField()
-    latitude = models.DecimalField(max_digits=9, decimal_places=6)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     featured = models.BooleanField(default=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.0)
     review_count = models.IntegerField(default=0)
-    images = models.JSONField(default=list)  # Using Django's native JSONField
+    images = models.JSONField(default=list)  # List of image URLs
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -65,6 +66,12 @@ class Destination(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.title)
+            # Ensure slug uniqueness
+            original_slug = self.slug
+            counter = 1
+            while Destination.objects.filter(slug=self.slug).exclude(id=self.id).exists():
+                self.slug = f"{original_slug}-{counter}"
+                counter += 1
         super().save(*args, **kwargs)
     
     class Meta:
@@ -77,10 +84,10 @@ class Destination(models.Model):
         ]
 
 class DestinationReview(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)  # Ensures UUIDField is used
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     destination = models.ForeignKey(Destination, on_delete=models.CASCADE, related_name='reviews', null=True)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='destination_reviews', null=True)
-    rating = models.IntegerField()
+    rating = models.IntegerField(choices=[(i, str(i)) for i in range(1, 6)])  # 1 to 5
     title = models.CharField(max_length=200)
     content = models.TextField()
     helpful = models.IntegerField(default=0)
@@ -89,7 +96,7 @@ class DestinationReview(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return f"{self.user.username}'s review of {self.destination.title}"
+        return f"{self.user.username if self.user else 'Anonymous'}'s review of {self.destination.title if self.destination else 'Unknown'}"
     
     class Meta:
         indexes = [
@@ -105,7 +112,7 @@ class SavedDestination(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
-        return f"{self.user.username} saved {self.destination.title}"
+        return f"{self.user.username if self.user else 'Anonymous'} saved {self.destination.title if self.destination else 'Unknown'}"
     
     class Meta:
         unique_together = ('user', 'destination')

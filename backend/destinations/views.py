@@ -1,3 +1,4 @@
+# destinations/views.py
 from rest_framework import viewsets, status, filters, permissions, serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -29,8 +30,13 @@ class DestinationViewSet(viewsets.ModelViewSet):
         return DestinationSerializer
 
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy',
-                           'toggle_featured', 'toggle_status']:
+        # Allow admins to perform any action
+        if self.request.user and self.request.user.is_staff:
+            return [IsAuthenticated()]
+        # For non-admins, apply owner-based permissions
+        if self.action in ['create']:
+            return [IsAuthenticated()]
+        if self.action in ['update', 'partial_update', 'destroy', 'toggle_featured', 'toggle_status']:
             return [IsAuthenticated(), IsDestinationOwnerOrReadOnly()]
         return []
 
@@ -168,7 +174,7 @@ class DestinationViewSet(viewsets.ModelViewSet):
 
     @swagger_auto_schema(
         tags=['Destinations'],
-        operation_description="Toggle the status of a destination between active and draft",
+        operation_description="Cycle through the status of a destination (draft -> active -> inactive)",
         responses={
             200: openapi.Response(
                 description="Success",
@@ -184,7 +190,8 @@ class DestinationViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def toggle_status(self, request, pk=None):
         destination = self.get_object()
-        destination.status = 'draft' if destination.status == 'active' else 'active'
+        status_cycle = {'draft': 'active', 'active': 'inactive', 'inactive': 'draft'}
+        destination.status = status_cycle.get(destination.status, 'draft')
         destination.save()
         return Response({'status': destination.status})
 

@@ -1,8 +1,18 @@
+# destinations/serializers.py
 from rest_framework import serializers
+from django.core.validators import URLValidator
 from .models import Destination, DestinationReview, SavedDestination
 from users.serializers import UserSerializer
+from decimal import Decimal
 
 class DestinationSerializer(serializers.ModelSerializer):
+    images = serializers.ListField(
+        child=serializers.CharField(validators=[URLValidator()]),
+        help_text="A list of image URLs"
+    )
+    latitude = serializers.CharField(allow_null=True, required=False)
+    longitude = serializers.CharField(allow_null=True, required=False)
+
     class Meta:
         model = Destination
         fields = [
@@ -13,10 +23,21 @@ class DestinationSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user', 'slug', 'rating', 'review_count', 'created_at', 'updated_at']
     
     def validate(self, data):
-        if 'latitude' in data and not -90 <= float(data['latitude']) <= 90:
-            raise serializers.ValidationError("Latitude must be between -90 and 90")
-        if 'longitude' in data and not -180 <= float(data['longitude']) <= 180:
-            raise serializers.ValidationError("Longitude must be between -180 and 180")
+        # Convert latitude and longitude to Decimal
+        if 'latitude' in data and data['latitude'] is not None:
+            try:
+                data['latitude'] = Decimal(data['latitude'])
+                if not -90 <= data['latitude'] <= 90:
+                    raise serializers.ValidationError("Latitude must be between -90 and 90")
+            except (ValueError, TypeError):
+                raise serializers.ValidationError("Latitude must be a valid number")
+        if 'longitude' in data and data['longitude'] is not None:
+            try:
+                data['longitude'] = Decimal(data['longitude'])
+                if not -180 <= data['longitude'] <= 180:
+                    raise serializers.ValidationError("Longitude must be between -180 and 180")
+            except (ValueError, TypeError):
+                raise serializers.ValidationError("Longitude must be a valid number")
         return data
 
     def create(self, validated_data):
