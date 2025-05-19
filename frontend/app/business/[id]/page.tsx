@@ -1,11 +1,11 @@
-import Image from "next/image";
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { Container } from "@/components/container";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
+import Image from "next/image"
+import Link from "next/link"
+import { notFound } from "next/navigation"
+import { Container } from "@/components/container"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Building2,
   Calendar,
@@ -20,41 +20,41 @@ import {
   Share2,
   Star,
   Wifi,
-} from "lucide-react";
-import { getBusinessById } from "@/app/actions/business-actions";
-import { getBusinessReviews } from "@/app/actions/review-actions";
-import { ReviewList } from "../components/review-list";
-import { ReviewForm } from "../components/review-form";
+} from "lucide-react"
+import { getBusinessById } from "@/app/actions/business-actions"
+import { getBusinessReviews } from "@/app/actions/review-actions"
+import { ReviewList } from "../components/review-list"
+import { ReviewForm } from "../components/review-form"
 
 interface BusinessDetailPageProps {
   params: {
-    id: string;
-  };
+    id: string
+  }
 }
 
 // Explicitly export as default to ensure Next.js recognizes it as a React component
 export default async function BusinessDetailPage({ params }: BusinessDetailPageProps) {
   // Validate ID to prevent invalid routes (e.g., logo.png)
   if (!/^\d+$/.test(params.id)) {
-    notFound();
+    notFound()
   }
 
   // Fetch business data
-  const business = await getBusinessById(params.id);
+  const business = await getBusinessById(params.id)
 
   if (!business) {
-    notFound();
+    notFound()
   }
 
   // Get reviews - use empty array as fallback if API fails
-  let reviews: any[] = [];
+  let reviews: any[] = []
   try {
-    const reviewsResult = await getBusinessReviews(params.id);
+    const reviewsResult = await getBusinessReviews(params.id)
     if (reviewsResult.success) {
-      reviews = reviewsResult.data || [];
+      reviews = reviewsResult.data || []
     }
   } catch (error) {
-    console.error("Error fetching reviews:", error);
+    console.error("Error fetching reviews:", error)
   }
 
   // Format facilities as an array
@@ -62,22 +62,22 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
     ? typeof business.facilities === "string"
       ? business.facilities.split(",").map((item: string) => item.trim())
       : Array.isArray(business.facilities)
-      ? business.facilities
-      : []
-    : [];
+        ? business.facilities
+        : []
+    : []
 
   // Process gallery images - handle the string format from API
-  let galleryImagesArray: string[] = [];
+  let galleryImagesArray: string[] = []
   if (business?.galleryImages) {
     if (typeof business.galleryImages === "string") {
       galleryImagesArray = business.galleryImages
         .split(",")
         .map((url: string) => url.trim())
-        .filter(Boolean);
+        .filter(Boolean)
     } else if (Array.isArray(business.galleryImages)) {
       galleryImagesArray = business.galleryImages
         .map((image: string | File) => (image instanceof File ? URL.createObjectURL(image) : image))
-        .filter(Boolean);
+        .filter(Boolean)
     }
   }
 
@@ -88,55 +88,48 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
       `/placeholder.svg?height=300&width=500&text=${encodeURIComponent(business?.businessName || "Business")}+2`,
       `/placeholder.svg?height=300&width=500&text=${encodeURIComponent(business?.businessName || "Business")}+3`,
       `/placeholder.svg?height=300&width=500&text=${encodeURIComponent(business?.businessName || "Business")}+4`,
-    ];
+    ]
   }
 
   // Normalize business data structure
-  const businessName = business?.businessName || "Unknown Business";
-  const businessType = business?.businessType || "Unknown Type";
-  const description = business?.description || "No description available.";
-  const address = business?.address || "No address provided.";
-  const city = business?.city || "";
-  const region = business?.region || "";
-  const phone = business?.phone || "";
-  const email = business?.email || "";
-  const website = business?.website || "";
+  const businessName = business?.businessName || "Unknown Business"
+  const businessType = business?.businessType || "Unknown Type"
+  const description = business?.description || "No description available."
+  const address = business?.address || "No address provided."
+  const city = business?.city || ""
+  const region = business?.region || ""
+  const phone = business?.phone || ""
+  const email = business?.email || ""
+  const website = business?.website || ""
   const mainImage =
     typeof business?.mainImage === "string" && business.mainImage
       ? business.mainImage
       : business?.mainImage instanceof File
-      ? URL.createObjectURL(business.mainImage)
-      : "/placeholder.svg";
-  const openingHours = business?.openingHours || "";
-  const verified = business?.verified || false;
-  const rating = business?.rating ? Number(business.rating).toFixed(1) : "New";
-  const totalReviews = business?.totalReviews || (reviews ? reviews.length : 0);
-  const latitude = business?.latitude || "9.0222";
-  const longitude = business?.longitude || "38.7468";
+        ? URL.createObjectURL(business.mainImage)
+        : "/placeholder.svg"
+  const openingHours = business?.openingHours || ""
+  const verified = business?.verified || false
+  const rating = business?.rating ? Number(business.rating).toFixed(1) : "New"
+  const totalReviews = business?.totalReviews || (reviews ? reviews.length : 0)
+  const latitude = business?.latitude || "9.0222"
+  const longitude = business?.longitude || "38.7468"
 
   // Social media links
-  const facebook = business?.facebook || "";
-  const instagram = business?.instagram || "";
+  const facebook = business?.facebook || ""
+  const instagram = business?.instagram || ""
   const socialMediaLinks = business?.socialMediaLinks
     ? typeof business.socialMediaLinks === "string"
       ? business.socialMediaLinks.split(",").filter(Boolean)
       : Array.isArray(business.socialMediaLinks)
-      ? business.socialMediaLinks
-      : []
-    : [];
+        ? business.socialMediaLinks
+        : []
+    : []
 
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-grow">
         <div className="relative h-64 md:h-96 w-full">
-          <Image
-            src={mainImage}
-            alt={businessName}
-            fill
-            className="object-cover"
-            priority
-            sizes="100vw"
-          />
+          <Image src={mainImage} alt={businessName} fill className="object-cover" priority sizes="100vw" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           <Container className="relative h-full flex flex-col justify-end pb-6">
             <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -333,7 +326,7 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
                         )}
 
                         {socialMediaLinks.map((link, index) => {
-                          if (link.includes("facebook") || link.includes("instagram")) return null;
+                          if (link.includes("facebook") || link.includes("instagram")) return null
                           return (
                             <a
                               key={index}
@@ -344,7 +337,7 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
                             >
                               <Globe className="h-5 w-5 text-gray-600" />
                             </a>
-                          );
+                          )
                         })}
                       </div>
                     </div>
@@ -380,12 +373,8 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
                     </div>
 
                     <div className="flex items-center">
-                      <CheckCircle
-                        className={`h-5 w-5 ${verified ? "text-green-500" : "text-yellow-500"} mr-3`}
-                      />
-                      <span className="text-gray-700">
-                        {verified ? "Verified Business" : "Verification Pending"}
-                      </span>
+                      <CheckCircle className={`h-5 w-5 ${verified ? "text-green-500" : "text-yellow-500"} mr-3`} />
+                      <span className="text-gray-700">{verified ? "Verified Business" : "Verification Pending"}</span>
                     </div>
                   </div>
 
@@ -420,5 +409,5 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
         </Container>
       </main>
     </div>
-  );
+  )
 }

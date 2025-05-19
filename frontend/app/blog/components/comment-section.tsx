@@ -2,12 +2,12 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { addComment } from "@/app/actions/blog-actions"
+import { addComment, getComments, markCommentHelpful, reportComment } from "@/app/actions/blog-actions"
 import { useToast } from "@/hooks/use-toast"
-import { MessageCircle, ThumbsUp, Flag, Loader2 } from 'lucide-react'
+import { MessageCircle, ThumbsUp, Flag, Loader2 } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 
 interface Author {
@@ -38,8 +38,31 @@ export function CommentSection({ postId, initialComments = [] }: CommentSectionP
   const [comments, setComments] = useState<Comment[]>(Array.isArray(initialComments) ? initialComments : [])
   const [newComment, setNewComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
   const { user, isAuthenticated } = useAuth()
+
+  // Fetch comments on component mount
+  useEffect(() => {
+    const fetchComments = async () => {
+      try {
+        setIsLoading(true)
+        const fetchedComments = await getComments(postId)
+        setComments(fetchedComments)
+      } catch (error) {
+        console.error("Error fetching comments:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load comments. Please refresh the page.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchComments()
+  }, [postId, toast])
 
   const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setNewComment(e.target.value)
@@ -61,9 +84,18 @@ export function CommentSection({ postId, initialComments = [] }: CommentSectionP
 
     try {
       setIsSubmitting(true)
+
+      // Validate comment length
+      if (newComment.length < 3) {
+        throw new Error("Comment must be at least 3 characters long")
+      }
+
       const comment = await addComment(postId, newComment)
-      setComments((prev) => (Array.isArray(prev) ? [...prev, comment] : [comment]))
+
+      // Add the new comment to the list
+      setComments((prev) => [comment, ...prev])
       setNewComment("")
+
       toast({
         title: "Comment added",
         description: "Your comment has been posted successfully.",
@@ -72,7 +104,7 @@ export function CommentSection({ postId, initialComments = [] }: CommentSectionP
       console.error("Error adding comment:", error)
       toast({
         title: "Error",
-        description: "Failed to post your comment. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to post your comment. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -91,8 +123,9 @@ export function CommentSection({ postId, initialComments = [] }: CommentSectionP
     }
 
     try {
-      // This would normally call an API endpoint to mark the comment as helpful
-      // For now, we'll just update the UI
+      await markCommentHelpful(postId, commentId)
+
+      // Update the comment in the UI
       setComments(
         comments.map((comment) =>
           comment.id === commentId ? { ...comment, helpful_count: comment.helpful_count + 1 } : comment,
@@ -124,8 +157,11 @@ export function CommentSection({ postId, initialComments = [] }: CommentSectionP
     }
 
     try {
-      // This would normally call an API endpoint to report the comment
-      // For now, we'll just show a toast
+      await reportComment(postId, commentId)
+
+      // Update the comment in the UI
+      setComments(comments.map((comment) => (comment.id === commentId ? { ...comment, reported: true } : comment)))
+
       toast({
         title: "Comment reported",
         description: "Thank you for helping us maintain a respectful community.",
@@ -163,7 +199,7 @@ export function CommentSection({ postId, initialComments = [] }: CommentSectionP
           value={newComment}
           onChange={handleCommentChange}
           className="w-full mb-4 min-h-[100px]"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !isAuthenticated}
         />
         <div className="flex justify-end">
           <Button type="submit" disabled={!isAuthenticated || isSubmitting || !newComment.trim()}>
@@ -181,7 +217,11 @@ export function CommentSection({ postId, initialComments = [] }: CommentSectionP
 
       {/* Comments List */}
       <div className="space-y-6">
-        {!Array.isArray(comments) || comments.length === 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : !Array.isArray(comments) || comments.length === 0 ? (
           <p className="text-gray-500 text-center py-8">No comments yet. Be the first to comment!</p>
         ) : (
           comments.map((comment) => (
@@ -210,6 +250,7 @@ export function CommentSection({ postId, initialComments = [] }: CommentSectionP
                 <button
                   className="flex items-center mr-4 hover:text-primary"
                   onClick={() => handleMarkHelpful(comment.id)}
+                  disabled={comment.reported}
                 >
                   <ThumbsUp className="h-4 w-4 mr-1" />
                   Helpful ({comment.helpful_count})
@@ -217,9 +258,10 @@ export function CommentSection({ postId, initialComments = [] }: CommentSectionP
                 <button
                   className="flex items-center hover:text-red-500"
                   onClick={() => handleReportComment(comment.id)}
+                  disabled={comment.reported}
                 >
                   <Flag className="h-4 w-4 mr-1" />
-                  Report
+                  {comment.reported ? "Reported" : "Report"}
                 </button>
               </div>
             </div>

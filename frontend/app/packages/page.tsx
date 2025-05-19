@@ -5,136 +5,39 @@ import { useRouter } from "next/navigation"
 import { PackageCard } from "./components/package-card"
 import { FilterBar } from "./components/filter-bar"
 import { SidebarFilter } from "./components/sidebar-filter"
-
-// Package type definition
-interface Package {
-  id: string
-  title: string
-  location: string
-  region: string
-  price: number
-  duration: string
-  image: string
-  description: string
-  category: string[]
-}
+import { getPackages } from "@/app/actions/package-actions"
+import type { PackageData } from "@/app/actions/package-actions"
 
 export default function PackagesPage() {
   const router = useRouter()
 
   // State for packages and filters
-  const [packages, setPackages] = useState<Package[]>([])
-  const [filteredPackages, setFilteredPackages] = useState<Package[]>([])
+  const [packages, setPackages] = useState<PackageData[]>([])
+  const [filteredPackages, setFilteredPackages] = useState<PackageData[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [priceRange, setPriceRange] = useState([0, 2000])
+  const [priceRange, setPriceRange] = useState([0, 5000])
   const [sortOption, setSortOption] = useState<"date" | "priceLowToHigh" | "priceHighToLow" | "nameAZ">("date")
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([])
   const [selectedDurations, setSelectedDurations] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // Mock data for packages
+  // Fetch packages from API
   useEffect(() => {
-    // Simulate API fetch with a delay
-    setIsLoading(true)
+    const fetchPackages = async () => {
+      setIsLoading(true)
+      try {
+        const data = await getPackages()
+        setPackages(data)
+        setFilteredPackages(data)
+      } catch (error) {
+        console.error("Error fetching packages:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
 
-    setTimeout(() => {
-      const mockPackages: Package[] = [
-        {
-          id: "1",
-          title: "History is not about the past but a map of the past",
-          location: "Gondar",
-          region: "Amhara region",
-          price: 600,
-          duration: "5 days tour",
-          image: "/placeholder.svg?height=300&width=400&text=Gondar+Castle",
-          description: "Explore the medieval castles and rich history of Gondar, the former capital of Ethiopia.",
-          category: ["Historical", "Cultural"],
-        },
-        {
-          id: "2",
-          title: "Fall in love with Axum's ancient charm and timeless wonders.",
-          location: "Axum",
-          region: "Tigray region",
-          price: 500,
-          duration: "3 days tour",
-          image: "/placeholder.svg?height=300&width=400&text=Axum+Obelisk",
-          description: "Discover the ancient kingdom of Axum with its mysterious obelisks and historical treasures.",
-          category: ["Historical", "Religious"],
-        },
-        {
-          id: "3",
-          title: "Fall in love with Axum's ancient charm and timeless wonders.",
-          location: "Axum",
-          region: "Tigray region",
-          price: 1000,
-          duration: "7 days tour",
-          image: "/placeholder.svg?height=300&width=400&text=Axum+Church",
-          description: "Immerse yourself in the rich religious heritage of Axum with visits to ancient churches.",
-          category: ["Religious", "Cultural"],
-        },
-        {
-          id: "4",
-          title: "The unique character as a symbol of taste and orientation",
-          location: "Harar",
-          region: "Harari region",
-          price: 700,
-          duration: "4 days tour",
-          image: "/placeholder.svg?height=300&width=400&text=Harar+City",
-          description:
-            "Experience the unique walled city of Harar with its colorful markets and rich Islamic heritage.",
-          category: ["Cultural", "Historical"],
-        },
-        {
-          id: "5",
-          title: "The unique character as a symbol of taste and orientation",
-          location: "Omo Valley",
-          region: "SNNPR",
-          price: 900,
-          duration: "6 days tour",
-          image: "/placeholder.svg?height=300&width=400&text=Omo+Valley+People",
-          description: "Meet the diverse tribes of the Omo Valley and experience their unique cultures and traditions.",
-          category: ["Cultural", "Adventure"],
-        },
-        {
-          id: "6",
-          title: "You don't want to pitch a tent and live inside the Louvre",
-          location: "Danakil",
-          region: "Afar region",
-          price: 800,
-          duration: "5 days tour",
-          image: "/placeholder.svg?height=300&width=400&text=Danakil+Depression",
-          description:
-            "Explore the otherworldly landscapes of the Danakil Depression, one of the hottest places on Earth.",
-          category: ["Adventure", "Nature"],
-        },
-        {
-          id: "7",
-          title: "You don't want to pitch a tent and live inside the Louvre",
-          location: "Lalibela",
-          region: "Amhara region",
-          price: 400,
-          duration: "3 days tour",
-          image: "/placeholder.svg?height=300&width=400&text=Lalibela+Churches",
-          description: "Marvel at the rock-hewn churches of Lalibela, a UNESCO World Heritage site.",
-          category: ["Religious", "Historical"],
-        },
-        {
-          id: "8",
-          title: "The unique character as a symbol of taste and orientation",
-          location: "Bale Mountains",
-          region: "Oromia region",
-          price: 800,
-          duration: "5 days tour",
-          image: "/placeholder.svg?height=300&width=400&text=Bale+Mountains",
-          description: "Trek through the stunning Bale Mountains National Park and spot endemic wildlife.",
-          category: ["Nature", "Adventure"],
-        },
-      ]
-
-      setPackages(mockPackages)
-      setFilteredPackages(mockPackages)
-      setIsLoading(false)
-    }, 1000)
+    fetchPackages()
   }, [])
 
   // Filter and sort packages
@@ -153,17 +56,22 @@ export default function PackagesPage() {
     }
 
     // Apply price range filter
-    result = result.filter((pkg) => pkg.price >= priceRange[0] && pkg.price <= priceRange[1])
+    result = result.filter((pkg) => Number(pkg.price) >= priceRange[0] && Number(pkg.price) <= priceRange[1])
 
     // Apply category filter
     if (selectedCategories.length > 0) {
       result = result.filter((pkg) => pkg.category.some((cat) => selectedCategories.includes(cat)))
     }
 
+    // Apply region filter
+    if (selectedRegions.length > 0) {
+      result = result.filter((pkg) => selectedRegions.includes(pkg.region))
+    }
+
     // Apply duration filter
     if (selectedDurations.length > 0) {
       result = result.filter((pkg) => {
-        const days = Number.parseInt(pkg.duration.split(" ")[0])
+        const days = pkg.duration_in_days || Number.parseInt(pkg.duration.split(" ")[0])
 
         return selectedDurations.some((duration) => {
           if (duration === "1-3 days" && days >= 1 && days <= 3) return true
@@ -178,13 +86,13 @@ export default function PackagesPage() {
     // Apply sorting
     switch (sortOption) {
       case "date":
-        // For mock data, we'll just keep the original order
+        // For API data, we'll just keep the original order
         break
       case "priceLowToHigh":
-        result.sort((a, b) => a.price - b.price)
+        result.sort((a, b) => Number(a.price) - Number(b.price))
         break
       case "priceHighToLow":
-        result.sort((a, b) => b.price - a.price)
+        result.sort((a, b) => Number(b.price) - Number(a.price))
         break
       case "nameAZ":
         result.sort((a, b) => a.title.localeCompare(b.title))
@@ -192,13 +100,18 @@ export default function PackagesPage() {
     }
 
     setFilteredPackages(result)
-  }, [packages, searchTerm, priceRange, sortOption, selectedCategories, selectedDurations])
+  }, [packages, searchTerm, priceRange, sortOption, selectedCategories, selectedRegions, selectedDurations])
 
   // Handle category selection
   const handleCategoryChange = (category: string) => {
     setSelectedCategories((prev) =>
       prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category],
     )
+  }
+
+  // Handle region selection
+  const handleRegionChange = (region: string) => {
+    setSelectedRegions((prev) => (prev.includes(region) ? prev.filter((r) => r !== region) : [...prev, region]))
   }
 
   // Handle duration selection
@@ -251,6 +164,8 @@ export default function PackagesPage() {
                 onCategoryChange={handleCategoryChange}
                 selectedDurations={selectedDurations}
                 onDurationChange={handleDurationChange}
+                selectedRegions={selectedRegions}
+                onRegionChange={handleRegionChange}
               />
             </div>
 
@@ -270,9 +185,10 @@ export default function PackagesPage() {
                       location={pkg.location}
                       region={pkg.region}
                       price={pkg.price}
+                      discounted_price={pkg.discounted_price}
                       duration={pkg.duration}
                       image={pkg.image}
-                      description={pkg.description}
+                      description={pkg.short_description}
                     />
                   ))}
                 </div>
@@ -283,8 +199,9 @@ export default function PackagesPage() {
                   <button
                     onClick={() => {
                       setSearchTerm("")
-                      setPriceRange([0, 2000])
+                      setPriceRange([0, 5000])
                       setSelectedCategories([])
+                      setSelectedRegions([])
                       setSelectedDurations([])
                     }}
                     className="bg-[#E91E63] text-white px-6 py-2 rounded-md hover:bg-[#D81B60]"

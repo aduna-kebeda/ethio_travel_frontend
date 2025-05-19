@@ -1,11 +1,11 @@
 "use client"
 
-import { use } from "react" // Import use directly from react
-import type React from "react"
+import React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
+import dynamic from "next/dynamic"
 import { Info, MapPin, Calendar, Star, Users, Clock, Share2, Heart, Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -24,33 +25,42 @@ import { Textarea } from "@/components/ui/textarea"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
+import { getPackageById, getPackageReviews } from "@/app/actions/package-actions"
+import { PackageReviewList } from "../components/package-review-list"
+import { PackageReviewForm } from "../components/package-review-form"
+import type { PackageData, ReviewData } from "@/app/actions/package-actions"
 
-// Package type definition
-interface PackageDetail {
-  id: string
-  title: string
-  location: string
-  region: string
-  price: number
-  priceUnit: string
-  duration: string
-  rating: number
-  reviews: number
-  description: string
-  image: string
-  departure: string
-  departureTime: string
-  returnTime: string
-  dressCode: string
-  notIncluded: string[]
-  included: string[]
-  tourGuide: string
-  galleryImages: string[]
-}
+// DynamicMap component to handle react-leaflet client-side
+const DynamicMap = dynamic(
+  () =>
+    import("react-leaflet").then((mod) => {
+      const { MapContainer, TileLayer, Marker, Popup } = mod
+      return function Map({ coordinates, location }: { coordinates: [number, number]; location: string }) {
+        return (
+          <MapContainer
+            center={coordinates}
+            zoom={9}
+            style={{ height: "100%", width: "100%" }}
+            className="rounded-lg"
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            />
+            <Marker position={coordinates}>
+              <Popup>{location}</Popup>
+            </Marker>
+          </MapContainer>
+        )
+      }
+    }),
+  { ssr: false }
+)
 
-export default function PackageDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+export default function PackageDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
-  const [packageDetail, setPackageDetail] = useState<PackageDetail | null>(null)
+  const [packageDetail, setPackageDetail] = useState<PackageData | null>(null)
+  const [reviews, setReviews] = useState<ReviewData[]>([])
   const [loading, setLoading] = useState(true)
   const [isFavorite, setIsFavorite] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
@@ -58,70 +68,80 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
   const [children, setChildren] = useState(0)
   const [bookingSuccess, setBookingSuccess] = useState(false)
   const [inquirySuccess, setInquirySuccess] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [fetchedCoordinates, setFetchedCoordinates] = useState<[number, number] | null>(null)
+  const [geocodingError, setGeocodingError] = useState<string | null>(null)
 
-  // Unwrap params using use from react
-  const params = use(paramsPromise)
-  const packageId = params.id
+  // Unwrap params using React.use to resolve the Promise
+  const { id: packageId } = React.use(params)
 
+  // Fetch package details
   useEffect(() => {
-    // In a real app, this would be an API call
-    const fetchPackageDetail = () => {
+    if (!packageId) {
+      console.warn("No package ID provided in params")
+      setLoading(false)
+      return
+    }
+
+    const fetchPackageDetail = async () => {
       setLoading(true)
+      try {
+        const [packageData, reviewsData] = await Promise.all([
+          getPackageById(packageId),
+          getPackageReviews(packageId),
+        ])
 
-      // Simulate API delay
-      setTimeout(() => {
-        // Mock data for the package detail
-        const mockPackageDetail: PackageDetail = {
-          id: packageId,
-          title: "Lalibela Rock-Hewn Churches Tour",
-          location: "Lalibela",
-          region: "Amhara region",
-          price: 1000,
-          priceUnit: "/ Per Person",
-          duration: "3 days tour",
-          rating: 4.8,
-          reviews: 24,
-          description: `Experience the wonder of Lalibela's rock-hewn churches, a UNESCO World Heritage site and one of Ethiopia's most remarkable destinations. This 3-day tour takes you through the ancient complex of 11 medieval monolithic cave churches dating from the 13th century.
-
-          Carved out of solid rock, these churches represent a masterpiece of human creative genius and continue to be an important place of worship and pilgrimage for Ethiopia's Orthodox Christians. You'll explore the Northern Group, the Eastern Group, and the isolated Church of St. George, considered the most elegant of all Lalibela churches.
-
-          Your expert guide will share the fascinating history and religious significance of these structures, while you'll also have the opportunity to witness local religious ceremonies and connect with the local community. The tour includes comfortable accommodations, all meals, and transportation.`,
-          image: "/placeholder.svg?height=600&width=1200&text=Lalibela+Churches",
-          departure: "Lalibela Airport",
-          departureTime: "9:00 AM on Day 1",
-          returnTime: "5:00 PM on Day 3",
-          dressCode: "Modest clothing (shoulders and knees covered for church visits)",
-          notIncluded: ["International Flights", "Travel Insurance", "Personal Expenses", "Alcoholic Beverages"],
-          included: [
-            "Airport Transfers",
-            "Accommodation (3-star hotel)",
-            "Breakfast and Dinner",
-            "English-speaking Guide",
-            "Entrance Fees",
-          ],
-          tourGuide: "Professional English-speaking guide",
-          galleryImages: [
-            "/placeholder.svg?height=200&width=300&text=Lalibela+1",
-            "/placeholder.svg?height=200&width=300&text=Lalibela+2",
-            "/placeholder.svg?height=200&width=300&text=Lalibela+3",
-            "/placeholder.svg?height=200&width=300&text=Lalibela+4",
-            "/placeholder.svg?height=200&width=300&text=Lalibela+5",
-            "/placeholder.svg?height=200&width=300&text=Lalibela+6",
-          ],
+        if (packageData) {
+          setPackageDetail(packageData)
         }
 
-        setPackageDetail(mockPackageDetail)
+        setReviews(reviewsData || [])
+      } catch (error) {
+        console.error("Error fetching package details:", error)
+      } finally {
         setLoading(false)
-      }, 1000)
+      }
     }
 
     fetchPackageDetail()
   }, [packageId])
 
+  // Fetch coordinates using Nominatim API
+  useEffect(() => {
+    if (!packageDetail) return
+
+    const fetchCoordinates = async () => {
+      try {
+        const address = `${packageDetail.location}, ${packageDetail.region}`
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`
+        )
+        const data = await response.json()
+
+        if (data.length > 0) {
+          const { lat, lon } = data[0]
+          if (lat && lon && !isNaN(Number(lat)) && !isNaN(Number(lon))) {
+            setFetchedCoordinates([Number(lat), Number(lon)])
+            setGeocodingError(null)
+          } else {
+            throw new Error("Invalid coordinates received")
+          }
+        } else {
+          throw new Error("No coordinates found for this address")
+        }
+      } catch (error) {
+        console.error("Error fetching coordinates:", error)
+        setGeocodingError("Unable to load map location. Please try again later.")
+        setFetchedCoordinates(null)
+      }
+    }
+
+    fetchCoordinates()
+  }, [packageDetail])
+
   const handleBookNow = () => {
     if (!selectedDate) return
 
-    // In a real app, this would submit to an API
     console.log("Booking submitted:", {
       packageId,
       date: selectedDate,
@@ -131,7 +151,6 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
 
     setBookingSuccess(true)
 
-    // Reset form after success
     setTimeout(() => {
       setBookingSuccess(false)
       setSelectedDate(undefined)
@@ -143,12 +162,10 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
   const handleInquirySubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    // In a real app, this would submit to an API
     console.log("Inquiry submitted")
 
     setInquirySuccess(true)
 
-    // Reset form after success
     setTimeout(() => {
       setInquirySuccess(false)
       e.currentTarget.reset()
@@ -156,12 +173,15 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
   }
 
   const handleShare = () => {
-    // In a real app, this would open a share dialog
     alert("Share functionality would open here")
   }
 
   const handlePrint = () => {
     window.print()
+  }
+
+  const handleViewLarger = (image: string) => {
+    setSelectedImage(image)
   }
 
   if (loading) {
@@ -186,12 +206,17 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
     )
   }
 
+  const displayPrice = packageDetail.discounted_price || packageDetail.price
+  const hasDiscount = packageDetail.discounted_price && packageDetail.discounted_price !== packageDetail.price
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
       <section
         className="relative h-[400px] bg-cover bg-center"
-        style={{ backgroundImage: `url('${packageDetail.image}')` }}
+        style={{
+          backgroundImage: `url('${packageDetail.image || "/placeholder.svg?height=600&width=1200&text=Tour+Package"}')`,
+        }}
       >
         <div className="absolute inset-0 bg-black/50"></div>
         <div className="relative container mx-auto px-4 h-full flex items-center">
@@ -225,13 +250,15 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
                     <Star
                       key={i}
                       className={`h-4 w-4 ${
-                        i < Math.floor(packageDetail.rating) ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
+                        i < Math.floor(Number(packageDetail.rating))
+                          ? "text-yellow-400 fill-yellow-400"
+                          : "text-gray-300"
                       }`}
                     />
                   ))}
                 </div>
                 <span className="ml-1">
-                  {packageDetail.rating} ({packageDetail.reviews} reviews)
+                  {packageDetail.rating} ({reviews.length} reviews)
                 </span>
               </div>
             </div>
@@ -308,7 +335,7 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
                               </span>
                               <div>
                                 <span className="font-medium">Departure Time:</span>
-                                <p className="text-gray-600">{packageDetail.departureTime}</p>
+                                <p className="text-gray-600">{packageDetail.departure_time}</p>
                               </div>
                             </li>
                             <li className="flex items-start">
@@ -317,7 +344,7 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
                               </span>
                               <div>
                                 <span className="font-medium">Return Time:</span>
-                                <p className="text-gray-600">{packageDetail.returnTime}</p>
+                                <p className="text-gray-600">{packageDetail.return_time}</p>
                               </div>
                             </li>
                             <li className="flex items-start">
@@ -326,7 +353,7 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
                               </span>
                               <div>
                                 <span className="font-medium">Tour Guide:</span>
-                                <p className="text-gray-600">{packageDetail.tourGuide}</p>
+                                <p className="text-gray-600">{packageDetail.tour_guide}</p>
                               </div>
                             </li>
                           </ul>
@@ -357,7 +384,7 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
 
                           <h3 className="text-lg font-semibold mb-3">Not Included</h3>
                           <ul className="space-y-1">
-                            {packageDetail.notIncluded.map((item, index) => (
+                            {packageDetail.not_included.map((item, index) => (
                               <li key={index} className="flex items-center text-gray-700">
                                 <svg
                                   className="h-5 w-5 text-red-500 mr-2"
@@ -459,56 +486,20 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
                       <h2 className="text-2xl font-bold mb-6">Tour Plan</h2>
 
                       <div className="space-y-8">
-                        <div className="relative pl-8 pb-8 border-l-2 border-[#E91E63]">
-                          <div className="absolute left-[-8px] top-0 w-4 h-4 rounded-full bg-[#E91E63]"></div>
-                          <div className="mb-2">
-                            <span className="inline-block px-3 py-1 bg-[#E91E63] text-white text-sm rounded-full mb-2">
-                              Day 1
-                            </span>
-                            <h3 className="text-xl font-bold">Arrival in Lalibela</h3>
+                        {packageDetail.itinerary.map((day, index) => (
+                          <div key={index} className="relative pl-8 pb-8 border-l-2 border-[#E91E63] last:pb-0">
+                            <div className="absolute left-[-8px] top-0 w-4 h-4 rounded-full bg-[#E91E63]"></div>
+                            <div className="mb-2">
+                              <span className="inline-block px-3 py-1 bg-[#E91E63] text-white text-sm rounded-full mb-2">
+                                Day {index + 1}
+                              </span>
+                              <h3 className="text-xl font-bold">{day.split(":")[0]}</h3>
+                            </div>
+                            <p className="text-gray-700">
+                              {day.includes(":") ? day.split(":").slice(1).join(":").trim() : day}
+                            </p>
                           </div>
-                          <p className="text-gray-700">
-                            Upon arrival at Lalibela Airport, you'll be greeted by your guide and transferred to your
-                            hotel. After check-in and lunch, begin your exploration with a visit to the Northwestern
-                            Group of churches, including Bet Medhane Alem, considered the largest monolithic church in
-                            the world. In the evening, enjoy a welcome dinner with traditional Ethiopian cuisine and
-                            cultural performances.
-                          </p>
-                        </div>
-
-                        <div className="relative pl-8 pb-8 border-l-2 border-[#E91E63]">
-                          <div className="absolute left-[-8px] top-0 w-4 h-4 rounded-full bg-[#E91E63]"></div>
-                          <div className="mb-2">
-                            <span className="inline-block px-3 py-1 bg-[#E91E63] text-white text-sm rounded-full mb-2">
-                              Day 2
-                            </span>
-                            <h3 className="text-xl font-bold">Eastern Group & St. George</h3>
-                          </div>
-                          <p className="text-gray-700">
-                            After breakfast, visit the Eastern Group of churches, including Bet Emanuel, Bet Mercurios,
-                            Bet Abba Libanos, and Bet Gabriel-Rufael. These churches showcase different architectural
-                            styles and contain ancient religious artifacts. After lunch, visit the most famous and
-                            photographed church of Lalibela, Bet Giyorgis (St. George), carved in the shape of a cross.
-                            In the late afternoon, hike to a nearby viewpoint for a panoramic view of the town.
-                          </p>
-                        </div>
-
-                        <div className="relative pl-8">
-                          <div className="absolute left-[-8px] top-0 w-4 h-4 rounded-full bg-[#E91E63]"></div>
-                          <div className="mb-2">
-                            <span className="inline-block px-3 py-1 bg-[#E91E63] text-white text-sm rounded-full mb-2">
-                              Day 3
-                            </span>
-                            <h3 className="text-xl font-bold">Yemrehanna Kristos & Departure</h3>
-                          </div>
-                          <p className="text-gray-700">
-                            On your final day, take a morning excursion to Yemrehanna Kristos, an 11th-century church
-                            built inside a cave, located 42km from Lalibela. This church predates the rock-hewn churches
-                            and features a different architectural style. Return to Lalibela for lunch and some free
-                            time for souvenir shopping at the local market. In the late afternoon, transfer to Lalibela
-                            Airport for your departure flight.
-                          </p>
-                        </div>
+                        ))}
                       </div>
 
                       <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -517,11 +508,9 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
                           <li>
                             The tour itinerary may be adjusted due to local conditions, weather, or other factors.
                           </li>
-                          <li>Churches require modest dress (shoulders and knees covered).</li>
-                          <li>Photography may be restricted in some areas or require additional fees.</li>
-                          <li>
-                            We recommend comfortable walking shoes as there is considerable walking between churches.
-                          </li>
+                          <li>Minimum age requirement: {packageDetail.min_age} years</li>
+                          <li>Difficulty level: {packageDetail.difficulty}</li>
+                          <li>Maximum group size: {packageDetail.max_group_size} people</li>
                         </ul>
                       </div>
                     </div>
@@ -532,27 +521,21 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
                       <h2 className="text-2xl font-bold mb-6">Location</h2>
 
                       <div className="aspect-video relative rounded-lg overflow-hidden mb-6">
-                        <Image
-                          src="/placeholder.svg?height=600&width=1200&text=Map+of+Lalibela"
-                          alt="Map of Lalibela"
-                          fill
-                          className="object-cover"
-                        />
+                        {fetchedCoordinates ? (
+                          <DynamicMap coordinates={fetchedCoordinates} location={packageDetail.location} />
+                        ) : (
+                          <div className="flex items-center justify-center h-full bg-gray-100 rounded-lg">
+                            <p className="text-gray-500">
+                              {geocodingError || "Loading map location..."}
+                            </p>
+                          </div>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                          <h3 className="text-lg font-semibold mb-3">About Lalibela</h3>
-                          <p className="text-gray-700 mb-4">
-                            Lalibela is a town in the Amhara region of northern Ethiopia, known for its remarkable
-                            rock-cut churches dating from the 12th and 13th centuries. The town is named after King
-                            Lalibela, who is credited with the construction of these churches.
-                          </p>
-                          <p className="text-gray-700">
-                            Located at an altitude of 2,500 meters (8,200 ft), Lalibela offers a pleasant climate
-                            year-round. The surrounding landscape features rugged terrain with mountains, valleys, and
-                            traditional Ethiopian villages.
-                          </p>
+                          <h3 className="text-lg font-semibold mb-3">About {packageDetail.location}</h3>
+                          <p className="text-gray-700 mb-4">{packageDetail.short_description}</p>
                         </div>
 
                         <div>
@@ -568,10 +551,8 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                               </svg>
                               <div>
-                                <span className="font-medium">By Air:</span>
-                                <p className="text-gray-600">
-                                  Ethiopian Airlines operates daily flights from Addis Ababa to Lalibela Airport (LLI).
-                                </p>
+                                <span className="font-medium">Departure Point:</span>
+                                <p className="text-gray-600">{packageDetail.departure}</p>
                               </div>
                             </li>
                             <li className="flex items-start">
@@ -584,11 +565,8 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                               </svg>
                               <div>
-                                <span className="font-medium">By Road:</span>
-                                <p className="text-gray-600">
-                                  Lalibela is accessible by road from major cities, though journeys can be long due to
-                                  mountainous terrain.
-                                </p>
+                                <span className="font-medium">Languages:</span>
+                                <p className="text-gray-600">{packageDetail.languages.join(", ")}</p>
                               </div>
                             </li>
                             <li className="flex items-start">
@@ -603,7 +581,7 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
                               <div>
                                 <span className="font-medium">Tour Package:</span>
                                 <p className="text-gray-600">
-                                  This tour includes airport transfers from Lalibela Airport.
+                                  This tour includes transportation from {packageDetail.departure}.
                                 </p>
                               </div>
                             </li>
@@ -613,7 +591,12 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
 
                       <div className="mt-6">
                         <Button
-                          onClick={() => window.open("https://maps.google.com/?q=Lalibela,Ethiopia", "_blank")}
+                          onClick={() =>
+                            window.open(
+                              `https://maps.google.com/?q=${packageDetail.location},${packageDetail.region}`,
+                              "_blank",
+                            )
+                          }
                           className="bg-[#E91E63] hover:bg-[#D81B60]"
                         >
                           View on Google Maps
@@ -627,38 +610,86 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
                       <h2 className="text-2xl font-bold mb-6">Gallery</h2>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        {packageDetail.galleryImages.map((image, index) => (
-                          <div key={index} className="relative aspect-video rounded-lg overflow-hidden group">
-                            <Image
-                              src={image || "/placeholder.svg"}
-                              alt={`Gallery image ${index + 1}`}
-                              fill
-                              className="object-cover transition-transform duration-300 group-hover:scale-110"
-                            />
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-white border-white hover:bg-white hover:text-black"
-                              >
-                                View Larger
-                              </Button>
+                        {packageDetail.gallery_images && packageDetail.gallery_images.length > 0 ? (
+                          packageDetail.gallery_images.map((image, index) => (
+                            <div key={index} className="relative aspect-video rounded-lg overflow-hidden group">
+                              <Image
+                                src={image || "/placeholder.svg"}
+                                alt={`Gallery image ${index + 1}`}
+                                fill
+                                className="object-cover transition-transform duration-300 group-hover:scale-110"
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-white border-white hover:bg-white hover:text-black"
+                                      onClick={() => handleViewLarger(image)}
+                                    >
+                                      View Larger
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-3xl p-0">
+                                    <DialogHeader className="p-4">
+                                      <DialogTitle>Gallery Image</DialogTitle>
+                                      <DialogDescription>View the full-size image below.</DialogDescription>
+                                    </DialogHeader>
+                                    <div className="relative w-full h-[60vh]">
+                                      <Image
+                                        src={selectedImage || "/placeholder.svg"}
+                                        alt="Full-size gallery image"
+                                        fill
+                                        className="object-contain"
+                                      />
+                                    </div>
+                                    <DialogFooter className="p-4">
+                                      <DialogClose asChild>
+                                        <Button variant="outline">Close</Button>
+                                      </DialogClose>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
+                              </div>
                             </div>
+                          ))
+                        ) : (
+                          <div className="col-span-3 text-center py-10">
+                            <p className="text-gray-500">No gallery images available for this package.</p>
                           </div>
-                        ))}
+                        )}
                       </div>
                     </div>
                   </TabsContent>
                 </div>
               </Tabs>
+
+              {/* Reviews Section */}
+              <div className="bg-white p-6 rounded-lg shadow-sm mt-8">
+                <h2 className="text-2xl font-bold mb-6">Reviews</h2>
+                <PackageReviewList reviews={reviews} />
+
+                <div className="mt-8 pt-8 border-t">
+                  <h3 className="text-xl font-bold mb-4">Write a Review</h3>
+                  <PackageReviewForm packageId={packageId} />
+                </div>
+              </div>
             </div>
 
             {/* Sidebar */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-lg shadow-sm p-6 sticky top-24">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-2xl font-bold text-[#E91E63]">${packageDetail.price}</h3>
-                  <span className="text-gray-500">{packageDetail.priceUnit}</span>
+                  {hasDiscount ? (
+                    <div>
+                      <h3 className="text-2xl font-bold text-[#E91E63]">${packageDetail.discounted_price}</h3>
+                      <span className="text-gray-500 line-through">${packageDetail.price}</span>
+                    </div>
+                  ) : (
+                    <h3 className="text-2xl font-bold text-[#E91E63]">${packageDetail.price}</h3>
+                  )}
+                  <span className="text-gray-500">/ Per Person</span>
                 </div>
 
                 <div className="space-y-4 mb-6">
@@ -762,15 +793,15 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
                 <div className="border-t border-b py-4 my-4">
                   <div className="flex justify-between mb-2">
                     <span className="text-gray-600">
-                      Adults ({adults} × ${packageDetail.price})
+                      Adults ({adults} × ${displayPrice})
                     </span>
-                    <span className="font-medium">${adults * packageDetail.price}</span>
+                    <span className="font-medium">${adults * Number(displayPrice)}</span>
                   </div>
                   <div className="flex justify-between mb-2">
                     <span className="text-gray-600">
-                      Children ({children} × ${packageDetail.price / 2})
+                      Children ({children} × ${Number(displayPrice) / 2})
                     </span>
-                    <span className="font-medium">${children * (packageDetail.price / 2)}</span>
+                    <span className="font-medium">${children * (Number(displayPrice) / 2)}</span>
                   </div>
                   <div className="flex justify-between mb-2">
                     <span className="text-gray-600">Service Fee</span>
@@ -781,7 +812,7 @@ export default function PackageDetailPage({ params: paramsPromise }: { params: P
                 <div className="flex justify-between mb-6">
                   <span className="text-lg font-bold">Total</span>
                   <span className="text-lg font-bold text-[#E91E63]">
-                    ${adults * packageDetail.price + children * (packageDetail.price / 2) + 50}
+                    ${adults * Number(displayPrice) + children * (Number(displayPrice) / 2) + 50}
                   </span>
                 </div>
 

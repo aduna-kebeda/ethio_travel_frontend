@@ -1,81 +1,84 @@
-"use client"
-
 import type React from "react"
-
-import { Bell, Calendar, Search } from "lucide-react"
+import Link from "next/link"
+import { Calendar, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
 
-interface HeroSectionProps {
-  onOpenSubscribeModal: () => void
+interface Event {
+  id: number
+  title: string
+  description: string
+  location: string
+  start_date: string
+  images: string
 }
 
-export const HeroSection = ({ onOpenSubscribeModal }: HeroSectionProps) => {
-  const router = useRouter()
-  const [searchQuery, setSearchQuery] = useState("")
+interface HeroSectionProps {
+  featuredEvent?: Event
+}
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (searchQuery.trim()) {
-      router.push(`/events?search=${encodeURIComponent(searchQuery)}`)
-    }
-  }
-
-  return (
-    <section
-      className="relative h-[550px] md:h-[600px] bg-cover bg-center rounded-xl overflow-hidden"
-      style={{ backgroundImage: "url('/assets/run.jpg')" }}
-    >
-      <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-black/40"></div>
-      <div className="relative container mx-auto px-6 h-full flex flex-col justify-center">
-        <div className="max-w-2xl">
-          <div className="inline-block bg-[#E91E63] text-white text-xs font-bold px-3 py-1.5 rounded-md mb-6">
-            DISCOVER ETHIOPIA'S EVENTS
-          </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-            Experience Ethiopia's Rich Cultural Celebrations
-          </h1>
-          <p className="text-white text-lg mb-8 opacity-90 max-w-xl">
-            From ancient religious ceremonies to vibrant cultural festivals, discover Ethiopia's most captivating events
-            and plan your perfect trip.
-          </p>
-
-          <form onSubmit={handleSearch} className="relative mb-8">
-            <input
-              type="text"
-              placeholder="Search for events..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full py-3.5 px-5 pl-12 rounded-full text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#E91E63] shadow-md"
-            />
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500" />
-            <Button
-              type="submit"
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-[#E91E63] hover:bg-[#D81B60] rounded-full px-6 py-2.5"
-            >
-              Find Events
-            </Button>
-          </form>
-
-          <div className="flex flex-wrap gap-4">
-            <Button
-              onClick={onOpenSubscribeModal}
-              className="bg-[#E91E63] text-white px-6 py-3 rounded-full hover:bg-[#D81B60] flex items-center"
-            >
-              <Bell className="mr-2 h-5 w-5" />
-              Get Event Notifications
-            </Button>
-            <Button
-              onClick={() => router.push("/events?view=calendar")}
-              className="bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-full hover:bg-white/30 flex items-center"
-            >
-              <Calendar className="mr-2 h-5 w-5" />
-              View Calendar
+const HeroSection: React.FC<HeroSectionProps> = ({ featuredEvent }) => {
+  if (!featuredEvent) {
+    return (
+      <div className="relative bg-gradient-to-r from-primary/90 to-primary h-[400px] flex items-center">
+        <div className="container mx-auto px-4 z-10">
+          <div className="max-w-2xl">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Discover Amazing Events</h1>
+            <p className="text-white/90 text-lg mb-6">
+              Find and join exciting events happening around you. From cultural experiences to music festivals, there's
+              something for everyone.
+            </p>
+            <Button asChild size="lg" variant="secondary">
+              <Link href="/events">Browse All Events</Link>
             </Button>
           </div>
         </div>
       </div>
-    </section>
+    )
+  }
+
+  return (
+    <div
+      className="relative h-[500px] bg-cover bg-center"
+      style={{
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url(${
+          featuredEvent.images || "/placeholder.svg?height=500&width=1200"
+        })`,
+      }}
+    >
+      <div className="container mx-auto px-4 h-full flex items-center">
+        <div className="max-w-2xl text-white">
+          <span className="inline-block bg-primary px-3 py-1 rounded-full text-sm font-medium mb-4">
+            Featured Event
+          </span>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">{featuredEvent.title}</h1>
+          <p className="text-white/90 text-lg mb-6">
+            {featuredEvent.description.length > 150
+              ? `${featuredEvent.description.substring(0, 150)}...`
+              : featuredEvent.description}
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex items-center">
+              <Calendar className="h-5 w-5 mr-2" />
+              <span>
+                {new Date(featuredEvent.start_date).toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </span>
+            </div>
+            <div className="flex items-center">
+              <MapPin className="h-5 w-5 mr-2" />
+              <span>{featuredEvent.location}</span>
+            </div>
+          </div>
+          <Button asChild size="lg">
+            <Link href={`/events/${featuredEvent.id}`}>View Details</Link>
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }
+
+export default HeroSection

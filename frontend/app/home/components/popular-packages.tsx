@@ -1,48 +1,33 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { default as NextImage } from "next/image"
 import { PackageCard } from "./package-card"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
+import { getPackages, type PackageData } from "@/app/actions/package-actions"
 
 export const PopularPackages = () => {
   const router = useRouter()
-  const [packages, setPackages] = useState([
-    {
-      id: "mekele-package",
-      title: "Mekele Package",
-      location: "Tigray, Northern Ethiopia",
-      price: "1,000 $",
-      image: "/placeholder.svg?height=300&width=400&text=Lake+View",
-      days: 7,
-      people: 10,
-      description:
-        "Experience the rich culture and stunning landscapes of Tigray. Visit ancient rock-hewn churches, hike through dramatic mountains, and enjoy authentic local cuisine.",
-    },
-    {
-      id: "semen-mountain-hiking",
-      title: "Semen mountain hiking",
-      location: "Amhara, Northern Ethiopia",
-      price: "1,233 $",
-      image: "/placeholder.svg?height=300&width=400&text=Mountain+Hiking",
-      days: 5,
-      people: 15,
-      description:
-        "Trek through the breathtaking Simien Mountains National Park, home to endemic wildlife like the Gelada baboon and Walia ibex. Experience stunning vistas and dramatic escarpments.",
-    },
-    {
-      id: "axumi-package",
-      title: "Axumi package",
-      location: "Tigray, Northern Ethiopia",
-      price: "1,233 $",
-      image: "/placeholder.svg?height=300&width=400&text=Ancient+Ruins",
-      days: 6,
-      people: 10,
-      description:
-        "Discover the ancient Kingdom of Axum with its mysterious stelae, royal tombs, and historical palaces. Learn about Ethiopia's rich history and archaeological treasures.",
-    },
-  ])
+  const [packages, setPackages] = useState<PackageData[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchPackages = async () => {
+      setIsLoading(true)
+      try {
+        // Fetch featured packages from the backend
+        const data = await getPackages({ featured: true })
+        setPackages(data.slice(0, 3)) // Get the first 3 packages
+      } catch (error) {
+        console.error("Error fetching packages:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchPackages()
+  }, [])
 
   const handleReadMore = () => {
     router.push("/destinations/danakil-depression")
@@ -67,6 +52,18 @@ export const PopularPackages = () => {
     show: { opacity: 1, y: 0 },
   }
 
+  // Transform backend package data to match the format expected by PackageCard
+  const transformedPackages = packages.map((pkg) => ({
+    id: pkg.id.toString(),
+    title: pkg.title,
+    location: `${pkg.location}, ${pkg.region}`,
+    price: pkg.price,
+    image: pkg.image || "/placeholder.svg?height=300&width=400&text=Package+Image",
+    days: pkg.duration_in_days,
+    people: pkg.max_group_size,
+    description: pkg.short_description,
+  }))
+
   return (
     <section className="py-12 bg-white">
       <div className="container mx-auto px-4">
@@ -79,19 +76,33 @@ export const PopularPackages = () => {
           <h2 className="text-2xl font-bold mb-8 text-[#0D2B3E]">Popular package</h2>
         </motion.div>
 
-        <motion.div
-          variants={container}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-8"
-        >
-          {packages.map((pkg, index) => (
-            <motion.div key={pkg.id} variants={item}>
-              <PackageCard {...pkg} />
-            </motion.div>
-          ))}
-        </motion.div>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[1, 2, 3].map((_, index) => (
+              <div key={index} className="rounded-lg bg-gray-100 animate-pulse h-[400px]"></div>
+            ))}
+          </div>
+        ) : (
+          <motion.div
+            variants={container}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-8"
+          >
+            {transformedPackages.length > 0 ? (
+              transformedPackages.map((pkg, index) => (
+                <motion.div key={pkg.id} variants={item}>
+                  <PackageCard {...pkg} />
+                </motion.div>
+              ))
+            ) : (
+              <div className="col-span-3 text-center py-8">
+                <p className="text-gray-500">No featured packages available at the moment.</p>
+              </div>
+            )}
+          </motion.div>
+        )}
 
         {/* Trendy Section */}
         <motion.div
@@ -102,12 +113,7 @@ export const PopularPackages = () => {
           className="mt-16 relative border-t border-b py-8"
         >
           <div className="absolute -left-4 bottom-0">
-            <NextImage
-              src="/assets/ethio_shell.jpg"
-              alt="Shell Decoration"
-              width={100}
-              height={100}
-            />
+            <NextImage src="/assets/ethio_shell.jpg" alt="Shell Decoration" width={100} height={100} />
           </div>
 
           <div className="border-2 border-dashed border-[#E91E63] rounded-lg p-8 text-center max-w-3xl mx-auto relative hover:border-solid transition-all duration-300">
