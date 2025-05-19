@@ -48,4 +48,4 @@ class BusinessReviewAdmin(admin.ModelAdmin):
 class SavedBusinessAdmin(admin.ModelAdmin):
     list_display = ('user', 'business', 'saved_at')
     list_filter = ('saved_at',)
-    search_fields = ('user__username', 'business__name') 
+    search_fields = ('user__username', 'business__name')

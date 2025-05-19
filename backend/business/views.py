@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status, permissions
+from rest_framework import viewsets, status, permissions, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -10,24 +10,20 @@ from .serializers import (
 )
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from rest_framework import serializers
-
-class IsOwnerOrReadOnly(permissions.BasePermission):
-    def has_object_permission(self, request, view, obj):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return obj.owner == request.user
-
-class IsAdminOrReadOnly(permissions.BasePermission):
-    def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return request.user and request.user.is_staff
+from django.utils import timezone
+from .permissions import IsBusinessOwnerOrReadOnly, IsReviewOwnerOrReadOnly
 
 class BusinessViewSet(viewsets.ModelViewSet):
     queryset = Business.objects.all()
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
-    
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsBusinessOwnerOrReadOnly]
+
+    def get_permissions(self):
+        if self.action in ['verify', 'toggle_featured']:
+            print(f"User: {self.request.user}, ID: {self.request.user.id}, Username: {self.request.user.username}, Email: {self.request.user.email}, Is staff: {self.request.user.is_staff}, Is superuser: {self.request.user.is_superuser}, Permissions: {self.request.user.get_all_permissions()}")
+            # Only admins can verify or toggle featured status
+            return [permissions.IsAdminUser()]
+        return super().get_permissions()
+
     def get_serializer_class(self):
         if self.action == 'create':
             return BusinessCreateSerializer
@@ -121,12 +117,12 @@ class BusinessViewSet(viewsets.ModelViewSet):
     )
     @action(detail=False, methods=['get'])
     def featured(self, request):
-        featured_businesses = self.get_queryset().filter(featured=True)
+        featured_businesses = self.get_queryset().filter(is_featured=True)
         serializer = self.get_serializer(featured_businesses, many=True)
         return Response(serializer.data)
 
     @swagger_auto_schema(
-        tags=['Business'],
+        tags=['Businessmetal'],
         operation_description="List user's businesses",
         responses={
             200: BusinessListSerializer(many=True)
@@ -147,19 +143,20 @@ class BusinessViewSet(viewsets.ModelViewSet):
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'featured': openapi.Schema(type=openapi.TYPE_BOOLEAN)
+                        'is_featured': openapi.Schema(type=openapi.TYPE_BOOLEAN)
                     }
                 )
             ),
-            403: "Forbidden"
+            403: "Forbidden",
+            404: "Not Found"
         }
     )
     @action(detail=True, methods=['post'])
     def toggle_featured(self, request, pk=None):
         business = self.get_object()
-        business.featured = not business.featured
+        business.is_featured = not business.is_featured
         business.save()
-        return Response({'featured': business.featured})
+        return Response({'is_featured': business.is_featured})
 
     @swagger_auto_schema(
         tags=['Business'],
@@ -170,23 +167,29 @@ class BusinessViewSet(viewsets.ModelViewSet):
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'verified': openapi.Schema(type=openapi.TYPE_BOOLEAN)
+                        'is_verified': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        'verification_date': openapi.Schema(type=openapi.TYPE_STRING, format='date-time')
                     }
                 )
             ),
-            403: "Forbidden"
+            403: "Forbidden",
+            404: "Not Found"
         }
     )
     @action(detail=True, methods=['post'])
     def verify(self, request, pk=None):
         business = self.get_object()
-        business.verified = True
+        business.is_verified = True
+        business.verification_date = timezone.now()
         business.save()
-        return Response({'verified': business.verified})
+        return Response({
+            'is_verified': business.is_verified,
+            'verification_date': business.verification_date
+        })
 
 class BusinessReviewViewSet(viewsets.ModelViewSet):
     serializer_class = BusinessReviewSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsReviewOwnerOrReadOnly]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -248,7 +251,7 @@ class BusinessReviewViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def report(self, request, pk=None):
         review = self.get_object()
-        review.reported = True
+        review.is_reported = True
         review.save()
         return Response({'message': 'Review reported successfully'})
 
@@ -261,7 +264,7 @@ class BusinessReviewViewSet(viewsets.ModelViewSet):
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'helpful': openapi.Schema(type=openapi.TYPE_INTEGER)
+                        'helpful_votes': openapi.Schema(type=openapi.TYPE_INTEGER)
                     }
                 )
             )
@@ -270,9 +273,9 @@ class BusinessReviewViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def mark_helpful(self, request, pk=None):
         review = self.get_object()
-        review.helpful += 1
+        review.helpful_votes += 1
         review.save()
-        return Response({'helpful': review.helpful})
+        return Response({'helpful_votes': review.helpful_votes})
 
 class SavedBusinessViewSet(viewsets.ModelViewSet):
     serializer_class = SavedBusinessSerializer
@@ -310,4 +313,4 @@ class SavedBusinessViewSet(viewsets.ModelViewSet):
         }
     )
     def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs) 
+        return super().list(request, *args, **kwargs)

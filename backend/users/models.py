@@ -45,6 +45,7 @@ class User(AbstractUser):
     
     STATUS_CHOICES = (
         ('active', 'Active'),
+        ('pending', 'Pending'),
         ('inactive', 'Inactive'),
         ('suspended', 'Suspended'),
     )
@@ -66,7 +67,7 @@ class User(AbstractUser):
     provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default='credentials')
     provider_id = models.CharField(max_length=255, blank=True, null=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     email_verified = models.BooleanField(default=False)
     verification_code = models.CharField(max_length=6, blank=True, null=True)
     verification_expires = models.DateTimeField(blank=True, null=True)

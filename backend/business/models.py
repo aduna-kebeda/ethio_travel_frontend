@@ -75,7 +75,6 @@ class Business(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)
-            # Check if slug exists and add a unique suffix if it does
             original_slug = self.slug
             counter = 1
             while Business.objects.filter(slug=self.slug).exists():
@@ -135,4 +134,4 @@ class SavedBusiness(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user.username} saved {self.business.name}" 
+        return f"{self.user.username} saved {self.business.name}"

@@ -41,6 +41,9 @@ urlpatterns = [
         }), name='user-detail'),
         path('<int:pk>/toggle_active/', UserViewSet.as_view({'post': 'toggle_active'}), name='user-toggle-active'),
         path('<int:pk>/toggle_staff/', UserViewSet.as_view({'post': 'toggle_staff'}), name='user-toggle-staff'),
+        path('<int:pk>/update_status/', UserViewSet.as_view({'put': 'update_status'}), name='user-update-status'),
+        
+        
     ])),
 ]
 

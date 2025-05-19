@@ -56,7 +56,7 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action in ['register', 'verify_email', 'resend_verification', 'forgot_password', 'reset_password', 'login']:
             return [AllowAny()]
         if self.action in ['list', 'retrieve', 'update', 'partial_update', 'destroy',
-                           'toggle_active', 'toggle_staff']:
+                           'toggle_active', 'toggle_staff', 'update_status']:
             return [IsAdminUser()]
         if self.action in ['me', 'change_password', 'change_email', 'logout']:
             return [IsAuthenticated()]
@@ -623,6 +623,42 @@ class UserViewSet(viewsets.ModelViewSet):
         user.is_staff = not user.is_staff
         user.save()
         return Response({'is_staff': user.is_staff})
+    
+    @swagger_auto_schema(
+        tags=['Users'],
+        operation_description="Update user status (admin only)",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['status'],
+            properties={
+                'status': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    enum=['active', 'inactive', 'pending', 'suspended'],
+                    description="New status for the user"
+                )
+            }
+        ),
+        responses={
+            200: openapi.Response(
+                description="User status updated",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'status': openapi.Schema(type=openapi.TYPE_STRING)
+                    }
+                )
+            ),
+            400: "Bad Request",
+            403: "Forbidden",
+            404: "Not Found"
+        }
+    )
+    @action(detail=True, methods=['put'], permission_classes=[IsAdminUser])
+    def update_status(self, request, pk=None):
+        user = self.get_object()
+        user.status = request.data.get('status', user.status)
+        user.save()
+        return Response({'status': user.status})
 
     @swagger_auto_schema(
         tags=['Users'],
