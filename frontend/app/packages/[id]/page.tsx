@@ -112,7 +112,7 @@ export default function PackageDetailPage({ params }: { params: Promise<{ id: st
 
     const fetchCoordinates = async () => {
       try {
-        const address = `${packageDetail.location}, ${packageDetail.region}`
+        const address = `${packageDetail.location}, ${packageDetail.region}, Ethiopia` // Added country for specificity
         const response = await fetch(
           `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`
         )
@@ -124,15 +124,19 @@ export default function PackageDetailPage({ params }: { params: Promise<{ id: st
             setFetchedCoordinates([Number(lat), Number(lon)])
             setGeocodingError(null)
           } else {
-            throw new Error("Invalid coordinates received")
+            // Invalid coordinates received
+            setGeocodingError("Invalid coordinates received for this address.")
+            setFetchedCoordinates(null) // Optional: set default coordinates, e.g., [9.03, 38.74] for Addis Ababa
           }
         } else {
-          throw new Error("No coordinates found for this address")
+          // No coordinates found
+          setGeocodingError("No coordinates found for this address.")
+          setFetchedCoordinates(null) // Optional: set default coordinates
         }
       } catch (error) {
         console.error("Error fetching coordinates:", error)
         setGeocodingError("Unable to load map location. Please try again later.")
-        setFetchedCoordinates(null)
+        setFetchedCoordinates(null) // Optional: set default coordinates
       }
     }
 

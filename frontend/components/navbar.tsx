@@ -117,17 +117,22 @@ export function Navbar() {
                         My Business
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Business Menu</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
+                    <DropdownMenuContent
+                      align="end"
+                      className="bg-white border border-gray-200 shadow-lg rounded-md p-2"
+                    >
+                      <DropdownMenuLabel className="text-gray-900 font-semibold">
+                        Business Menu
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator className="bg-gray-200" />
+                      <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
                         <Link href="/business/my-business">My Listings</Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
+                      <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
                         <Link href="/business/register">Add New Business</Link>
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
+                      <DropdownMenuSeparator className="bg-gray-200" />
+                      <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
                         <Link href="/business">Browse Directory</Link>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -152,25 +157,33 @@ export function Navbar() {
                       </div>
                     </div>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>
+                  <DropdownMenuContent
+                    align="end"
+                    className="bg-white border border-gray-200 shadow-lg rounded-md p-2"
+                  >
+                    <DropdownMenuLabel className="text-gray-900 font-semibold">
                       {user.first_name ? `${user.first_name} ${user.last_name}` : user.username}
                     </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
+                    <DropdownMenuSeparator className="bg-gray-200" />
+                    <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
                       <Link href="/profile">My Profile</Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
+                    <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
                       <Link href="/business/my-business">My Business</Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
+                    <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
                       <Link href="/blog/my-posts">My Blog Posts</Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
+                    <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
                       <Link href="/settings">Settings</Link>
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-gray-200" />
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="hover:bg-gray-100 text-gray-700 rounded-sm"
+                    >
+                      Logout
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
