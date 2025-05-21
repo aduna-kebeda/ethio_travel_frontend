@@ -16,10 +16,12 @@ import { registerUser } from "@/app/actions/auth-actions"
 export default function SignupPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [generalError, setGeneralError] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [agreeTerms, setAgreeTerms] = useState(false)
+  const [registrationSuccess, setRegistrationSuccess] = useState(false)
 
   // Form fields
   const [firstName, setFirstName] = useState("")
@@ -32,20 +34,37 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Reset errors
+    setGeneralError("")
+    setFieldErrors({})
+
+    // Client-side validation
     if (!agreeTerms) {
-      setError("You must agree to the terms and conditions")
+      setGeneralError("You must agree to the terms and conditions")
       return
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match")
+      setFieldErrors((prev) => ({
+        ...prev,
+        confirmPassword: "Passwords do not match",
+      }))
+      return
+    }
+
+    if (password.length < 8) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        password: "Password must be at least 8 characters long",
+      }))
       return
     }
 
     setIsLoading(true)
-    setError("")
 
     try {
+      console.log("Submitting registration form...")
+
       const result = await registerUser({
         username,
         email,
@@ -56,19 +75,41 @@ export default function SignupPage() {
         role: "user",
       })
 
+      console.log("Registration result:", result)
+
       if (!result.success) {
-        setError(result.error || "Registration failed")
+        // Handle field-specific errors
+        if (result.fieldErrors) {
+          setFieldErrors(result.fieldErrors)
+        } else {
+          // Handle general error
+          setGeneralError(result.error || "Registration failed. Please try again.")
+        }
         setIsLoading(false)
         return
       }
 
+      // Handle successful registration
+      console.log("Registration successful!")
+
       // Store email in session storage for verification page
       sessionStorage.setItem("registrationEmail", email)
 
-      // Redirect to verification page
-      router.push("/verify-email")
+      // Show success message
+      setRegistrationSuccess(true)
+
+      // Redirect to verification page after a short delay
+      setTimeout(() => {
+        // Use window.location for a hard redirect to avoid any router interception
+        window.location.href = "/verify-email"
+      }, 1500)
     } catch (error) {
-      setError("Something went wrong. Please try again.")
+      console.error("Signup error:", error)
+      setGeneralError(
+        error instanceof Error
+          ? `Error: ${error.message}`
+          : "An unexpected error occurred during registration. Please try again later.",
+      )
       setIsLoading(false)
     }
   }
@@ -83,7 +124,45 @@ export default function SignupPage() {
       <h2 className="mt-6 text-3xl font-bold tracking-tight text-center">Sign Up</h2>
       <p className="mt-2 text-sm text-muted-foreground text-center">Create your EthioTravel account</p>
 
-      {error && <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-500">{error}</div>}
+      {generalError && (
+        <div className="mt-4 rounded-md bg-red-50 p-4 border border-red-200 text-sm text-red-600">
+          <div className="flex items-start">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 mr-2 text-red-500 mt-0.5 flex-shrink-0"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <div className="whitespace-pre-wrap">{generalError}</div>
+          </div>
+        </div>
+      )}
+
+      {registrationSuccess && (
+        <div className="mt-4 rounded-md bg-green-50 p-4 border border-green-200 text-sm text-green-600">
+          <div className="flex items-start">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 mr-2 text-green-500 mt-0.5 flex-shrink-0"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <div>Registration successful! Redirecting to verification page...</div>
+          </div>
+        </div>
+      )}
 
       <div className="mt-8">
         <form onSubmit={handleSignup} className="space-y-6">
@@ -96,7 +175,9 @@ export default function SignupPage() {
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="John"
                 required
+                className={fieldErrors.first_name ? "border-red-500" : ""}
               />
+              {fieldErrors.first_name && <p className="text-xs text-red-500 mt-1">{fieldErrors.first_name}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="last-name">Last name</Label>
@@ -106,7 +187,9 @@ export default function SignupPage() {
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder="Doe"
                 required
+                className={fieldErrors.last_name ? "border-red-500" : ""}
               />
+              {fieldErrors.last_name && <p className="text-xs text-red-500 mt-1">{fieldErrors.last_name}</p>}
             </div>
           </div>
 
@@ -118,7 +201,9 @@ export default function SignupPage() {
               onChange={(e) => setUsername(e.target.value)}
               placeholder="johndoe"
               required
+              className={fieldErrors.username ? "border-red-500" : ""}
             />
+            {fieldErrors.username && <p className="text-xs text-red-500 mt-1">{fieldErrors.username}</p>}
           </div>
 
           <div className="space-y-2">
@@ -130,7 +215,9 @@ export default function SignupPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="john@example.com"
               required
+              className={fieldErrors.email ? "border-red-500" : ""}
             />
+            {fieldErrors.email && <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>}
           </div>
 
           <div className="space-y-2">
@@ -142,6 +229,8 @@ export default function SignupPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={8}
+                className={fieldErrors.password ? "border-red-500" : ""}
               />
               <button
                 type="button"
@@ -155,6 +244,7 @@ export default function SignupPage() {
                 )}
               </button>
             </div>
+            {fieldErrors.password && <p className="text-xs text-red-500 mt-1">{fieldErrors.password}</p>}
           </div>
 
           <div className="space-y-2">
@@ -166,6 +256,8 @@ export default function SignupPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                minLength={8}
+                className={fieldErrors.confirmPassword || fieldErrors.password2 ? "border-red-500" : ""}
               />
               <button
                 type="button"
@@ -179,6 +271,8 @@ export default function SignupPage() {
                 )}
               </button>
             </div>
+            {fieldErrors.confirmPassword && <p className="text-xs text-red-500 mt-1">{fieldErrors.confirmPassword}</p>}
+            {fieldErrors.password2 && <p className="text-xs text-red-500 mt-1">{fieldErrors.password2}</p>}
           </div>
 
           <div className="flex items-center space-x-2">
@@ -202,12 +296,30 @@ export default function SignupPage() {
           <Button
             type="submit"
             className="w-full rounded-full bg-[#E91E63] hover:bg-[#D81B60]"
-            disabled={isLoading || !agreeTerms}
+            disabled={isLoading || !agreeTerms || registrationSuccess}
           >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Creating account...
+              </>
+            ) : registrationSuccess ? (
+              <>
+                <svg
+                  className="mr-2 h-4 w-4"
+                  fill="none"
+                  height="24"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  width="24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Account Created
               </>
             ) : (
               "Sign Up"
@@ -217,9 +329,9 @@ export default function SignupPage() {
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link href="/login" className="font-medium text-[#E91E63] hover:text-[#D81B60]">
+          <a href="/login" className="font-medium text-[#E91E63] hover:text-[#D81B60]">
             Login
-          </Link>
+          </a>
         </p>
       </div>
     </AuthLayout>

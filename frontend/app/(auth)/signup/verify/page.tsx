@@ -4,145 +4,180 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Logo } from "@/components/logo"
-import { Loader2 } from "lucide-react"
 import { AuthLayout } from "@/components/auth-layout"
 import { verifyEmail } from "@/app/actions/auth-actions"
 
 export default function VerifyEmailPage() {
   const router = useRouter()
-  const [verificationCode, setVerificationCode] = useState("")
   const [email, setEmail] = useState("")
+  const [code, setCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState(false)
   const [countdown, setCountdown] = useState(60)
   const [canResend, setCanResend] = useState(false)
 
   useEffect(() => {
     // Get email from session storage
-    if (typeof window !== "undefined") {
-      const storedEmail = sessionStorage.getItem("userEmail")
-      if (storedEmail) {
-        setEmail(storedEmail)
-      } else {
-        // If no email is found, redirect to signup
-        router.push("/signup")
-      }
+    const storedEmail = sessionStorage.getItem("registrationEmail")
+    if (storedEmail) {
+      setEmail(storedEmail)
     }
 
-    // Set up countdown for resend button
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          setCanResend(true)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    // Countdown for resend button
+    let timer: NodeJS.Timeout
+    if (!canResend && countdown > 0) {
+      timer = setTimeout(() => {
+        setCountdown(countdown - 1)
+      }, 1000)
+    } else if (countdown === 0) {
+      setCanResend(true)
+    }
 
-    return () => clearInterval(timer)
-  }, [router])
+    return () => {
+      if (timer) clearTimeout(timer)
+    }
+  }, [countdown, canResend])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!email || !code) {
+      setError("Email and verification code are required")
+      return
+    }
+
     setIsLoading(true)
     setError("")
 
     try {
-      const result = await verifyEmail({
-        email,
-        code: verificationCode,
-      })
+      const result = await verifyEmail({ email, code })
 
       if (!result.success) {
-        setError(result.error || "Verification failed. Please try again.")
+        setError(result.error || "Verification failed. Please check your code and try again.")
         setIsLoading(false)
         return
       }
 
-      // Redirect to username selection page
-      router.push("/signup/username")
+      setSuccess(true)
+
+      // Redirect to login page after successful verification
+      setTimeout(() => {
+        router.push("/login")
+      }, 2000)
     } catch (error) {
-      console.error("Verification error:", error)
-      setError("Failed to verify email. Please try again.")
+      setError(error instanceof Error ? error.message : "An unexpected error occurred")
       setIsLoading(false)
     }
   }
 
   const handleResendCode = async () => {
-    // In a real implementation, you would call an API to resend the code
+    // Implement resend code functionality here
     setCountdown(60)
     setCanResend(false)
-
-    // Set up countdown again
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          setCanResend(true)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    // You would typically call an API endpoint to resend the code
+    alert("A new verification code has been sent to your email.")
   }
 
   return (
     <AuthLayout>
-      <div className="mb-8">
-        <Logo />
-        <h2 className="mt-6 text-2xl font-bold text-gray-900">Verify your email</h2>
-        <p className="mt-2 text-sm text-gray-600">
-          We've sent a verification code to <span className="font-medium">{email}</span>
-        </p>
+      <div className="flex justify-center">
+        <Link href="/" className="text-2xl font-bold text-[#0D2B3E]">
+          Ethio<span className="text-[#E91E63]">Travel</span>
+        </Link>
       </div>
+      <h2 className="mt-6 text-3xl font-bold tracking-tight text-center">Verify Your Email</h2>
+      <p className="mt-2 text-sm text-muted-foreground text-center">
+        We've sent a verification code to your email. Please enter it below.
+      </p>
 
-      {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">{error}</div>}
+      {error && <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-500">{error}</div>}
 
-      <form className="space-y-6" onSubmit={handleSubmit}>
-        <div className="space-y-2">
-          <Label htmlFor="verification-code">Verification Code</Label>
-          <Input
-            id="verification-code"
-            placeholder="Enter the 6-digit code"
-            value={verificationCode}
-            onChange={(e) => setVerificationCode(e.target.value)}
-            required
-            disabled={isLoading}
-          />
+      {success && (
+        <div className="mt-4 rounded-md bg-green-50 p-4 border border-green-200 text-sm text-green-600">
+          <div className="flex items-start">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 mr-2 text-green-500 mt-0.5 flex-shrink-0"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <div>Email verified successfully! Redirecting to login page...</div>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-8">
+        <form onSubmit={handleVerify} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="john@example.com"
+              required
+              disabled={!!sessionStorage.getItem("registrationEmail")}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="code">Verification Code</Label>
+            <Input
+              id="code"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="Enter the code from your email"
+              required
+            />
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full rounded-full bg-[#E91E63] hover:bg-[#D81B60]"
+            disabled={isLoading || success}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              "Verify Email"
+            )}
+          </Button>
+        </form>
+
+        <div className="mt-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            Didn't receive the code?{" "}
+            {canResend ? (
+              <button onClick={handleResendCode} className="font-medium text-[#E91E63] hover:text-[#D81B60]">
+                Resend Code
+              </button>
+            ) : (
+              <span className="text-gray-500">Resend in {countdown} seconds</span>
+            )}
+          </p>
         </div>
 
-        <Button type="submit" className="w-full rounded-full bg-[#E91E63] hover:bg-[#D81B60]" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Verifying...
-            </>
-          ) : (
-            "Verify Email"
-          )}
-        </Button>
-      </form>
-
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600">
-          Didn't receive a code?{" "}
-          {canResend ? (
-            <button
-              onClick={handleResendCode}
-              className="font-medium text-[#E91E63] hover:text-[#D81B60]"
-              disabled={isLoading}
-            >
-              Resend Code
-            </button>
-          ) : (
-            <span className="text-gray-400">Resend code in {countdown}s</span>
-          )}
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Already verified?{" "}
+          <Link href="/login" className="font-medium text-[#E91E63] hover:text-[#D81B60]">
+            Login
+          </Link>
         </p>
       </div>
     </AuthLayout>
