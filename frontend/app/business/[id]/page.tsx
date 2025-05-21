@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Building2,
   Calendar,
@@ -25,6 +26,7 @@ import { getBusinessById } from "@/app/actions/business-actions"
 import { getBusinessReviews } from "@/app/actions/review-actions"
 import { ReviewList } from "../components/review-list"
 import { ReviewForm } from "../components/review-form"
+import { Suspense } from "react"
 
 interface BusinessDetailPageProps {
   params: {
@@ -32,7 +34,140 @@ interface BusinessDetailPageProps {
   }
 }
 
-// Explicitly export as default to ensure Next.js recognizes it as a React component
+// Loading skeleton for business details
+function BusinessDetailSkeleton() {
+  return (
+    <div className="flex flex-col min-h-screen">
+      <main className="flex-grow">
+        <div className="relative h-64 md:h-96 w-full bg-gray-200 animate-pulse">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <Container className="relative h-full flex flex-col justify-end pb-6">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-6 w-32" />
+            </div>
+            <Skeleton className="h-10 w-3/4 mb-2" />
+            <Skeleton className="h-5 w-1/2" />
+          </Container>
+        </div>
+
+        <Container className="py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              <Skeleton className="h-12 w-full mb-6" />
+              <div className="space-y-6">
+                <div>
+                  <Skeleton className="h-8 w-40 mb-3" />
+                  <Skeleton className="h-4 w-full mb-2" />
+                  <Skeleton className="h-4 w-full mb-2" />
+                  <Skeleton className="h-4 w-3/4" />
+                </div>
+                <div>
+                  <Skeleton className="h-8 w-64 mb-3" />
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {[...Array(6)].map((_, i) => (
+                      <Skeleton key={i} className="h-6 w-full" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-6">
+              <Card>
+                <CardContent className="p-6 space-y-4">
+                  <Skeleton className="h-8 w-48 mb-2" />
+                  <div className="space-y-3">
+                    <Skeleton className="h-6 w-full" />
+                    <Skeleton className="h-6 w-full" />
+                    <Skeleton className="h-6 w-full" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6 space-y-4">
+                  <Skeleton className="h-8 w-48 mb-2" />
+                  <div className="space-y-3">
+                    <Skeleton className="h-6 w-full" />
+                    <Skeleton className="h-6 w-full" />
+                    <Skeleton className="h-6 w-full" />
+                    <Skeleton className="h-6 w-full" />
+                  </div>
+                  <div className="pt-2 flex flex-col gap-2">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </Container>
+      </main>
+    </div>
+  )
+}
+
+// Gallery component with optimized image loading
+function GalleryTab({ images, businessName }: { images: string[]; businessName: string }) {
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-bold mb-3">Photo Gallery</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {images.map((imageUrl, index) => (
+          <div key={index} className="relative h-64 rounded-lg overflow-hidden">
+            <Image
+              src={imageUrl || "/placeholder.svg"}
+              alt={`${businessName} - Image ${index + 1}`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 50vw"
+              loading={index < 2 ? "eager" : "lazy"}
+              quality={index < 2 ? 85 : 75}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Reviews tab with suspense boundary
+function ReviewsTab({
+  businessId,
+  reviews,
+  totalReviews,
+}: { businessId: string; reviews: any[]; totalReviews: number }) {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold">Reviews & Ratings</h2>
+      </div>
+
+      <div className="bg-white rounded-lg border p-6 mb-6">
+        <h3 className="text-lg font-medium mb-4">Write a Review</h3>
+        <ReviewForm businessId={businessId} />
+      </div>
+
+      <h3 className="text-lg font-medium mb-4">Customer Reviews ({totalReviews})</h3>
+      <Suspense
+        fallback={
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="border rounded-lg p-4">
+                <Skeleton className="h-6 w-32 mb-2" />
+                <Skeleton className="h-4 w-full mb-1" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ))}
+          </div>
+        }
+      >
+        <ReviewList reviews={reviews} />
+      </Suspense>
+    </div>
+  )
+}
+
+// Main business detail component
 export default async function BusinessDetailPage({ params }: BusinessDetailPageProps) {
   // Validate ID to prevent invalid routes (e.g., logo.png)
   if (!/^\d+$/.test(params.id)) {
@@ -86,8 +221,6 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
     galleryImagesArray = [
       `/placeholder.svg?height=300&width=500&text=${encodeURIComponent(business?.businessName || "Business")}+1`,
       `/placeholder.svg?height=300&width=500&text=${encodeURIComponent(business?.businessName || "Business")}+2`,
-      `/placeholder.svg?height=300&width=500&text=${encodeURIComponent(business?.businessName || "Business")}+3`,
-      `/placeholder.svg?height=300&width=500&text=${encodeURIComponent(business?.businessName || "Business")}+4`,
     ]
   }
 
@@ -129,7 +262,15 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
     <div className="flex flex-col min-h-screen">
       <main className="flex-grow">
         <div className="relative h-64 md:h-96 w-full">
-          <Image src={mainImage} alt={businessName} fill className="object-cover" priority sizes="100vw" />
+          <Image
+            src={mainImage || "/placeholder.svg"}
+            alt={businessName}
+            fill
+            className="object-cover"
+            priority
+            sizes="100vw"
+            quality={85}
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           <Container className="relative h-full flex flex-col justify-end pb-6">
             <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -205,20 +346,23 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
                 </TabsContent>
 
                 <TabsContent value="gallery" className="space-y-6">
-                  <h2 className="text-xl font-bold mb-3">Photo Gallery</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {galleryImagesArray.map((imageUrl, index) => (
-                      <div key={index} className="relative h-64 rounded-lg overflow-hidden">
-                        <Image
-                          src={imageUrl}
-                          alt={`${businessName} - Image ${index + 1}`}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, 50vw"
-                        />
+                  <Suspense
+                    fallback={
+                      <div className="space-y-6">
+                        <h2 className="text-xl font-bold mb-3">Photo Gallery</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {[...Array(4)].map((_, i) => (
+                            <div
+                              key={i}
+                              className="relative h-64 rounded-lg overflow-hidden bg-gray-200 animate-pulse"
+                            ></div>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    }
+                  >
+                    <GalleryTab images={galleryImagesArray} businessName={businessName} />
+                  </Suspense>
                 </TabsContent>
 
                 <TabsContent value="location" className="space-y-6">
@@ -234,6 +378,7 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
                       marginWidth={0}
                       src={`https://maps.google.com/maps?q=${latitude},${longitude}&z=15&output=embed`}
                       className="absolute inset-0"
+                      loading="lazy"
                     ></iframe>
                   </div>
                   <div className="flex items-center text-gray-700">
@@ -245,17 +390,31 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
                 </TabsContent>
 
                 <TabsContent value="reviews" className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold">Reviews & Ratings</h2>
-                  </div>
-
-                  <div className="bg-white rounded-lg border p-6 mb-6">
-                    <h3 className="text-lg font-medium mb-4">Write a Review</h3>
-                    <ReviewForm businessId={params.id} />
-                  </div>
-
-                  <h3 className="text-lg font-medium mb-4">Customer Reviews ({totalReviews})</h3>
-                  <ReviewList reviews={reviews || []} />
+                  <Suspense
+                    fallback={
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                          <h2 className="text-xl font-bold">Reviews & Ratings</h2>
+                        </div>
+                        <div className="bg-white rounded-lg border p-6 mb-6">
+                          <Skeleton className="h-6 w-48 mb-4" />
+                          <Skeleton className="h-32 w-full" />
+                        </div>
+                        <Skeleton className="h-6 w-64 mb-4" />
+                        <div className="space-y-4">
+                          {[...Array(3)].map((_, i) => (
+                            <div key={i} className="border rounded-lg p-4">
+                              <Skeleton className="h-6 w-32 mb-2" />
+                              <Skeleton className="h-4 w-full mb-1" />
+                              <Skeleton className="h-4 w-3/4" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    }
+                  >
+                    <ReviewsTab businessId={params.id} reviews={reviews} totalReviews={totalReviews} />
+                  </Suspense>
                 </TabsContent>
               </Tabs>
             </div>
@@ -410,4 +569,9 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
       </main>
     </div>
   )
+}
+
+// Add a loading state for the page
+export function Loading() {
+  return <BusinessDetailSkeleton />
 }
