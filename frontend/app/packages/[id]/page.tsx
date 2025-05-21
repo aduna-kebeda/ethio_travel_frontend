@@ -30,30 +30,9 @@ import { PackageReviewList } from "../components/package-review-list"
 import { PackageReviewForm } from "../components/package-review-form"
 import type { PackageData, ReviewData } from "@/app/actions/package-actions"
 
-// DynamicMap component to handle react-leaflet client-side
+// Replace the DynamicMap component with a simple Google Maps embed
 const DynamicMap = dynamic(
-  () =>
-    import("react-leaflet").then((mod) => {
-      const { MapContainer, TileLayer, Marker, Popup } = mod
-      return function Map({ coordinates, location }: { coordinates: [number, number]; location: string }) {
-        return (
-          <MapContainer
-            center={coordinates}
-            zoom={9}
-            style={{ height: "100%", width: "100%" }}
-            className="rounded-lg"
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            />
-            <Marker position={coordinates}>
-              <Popup>{location}</Popup>
-            </Marker>
-          </MapContainer>
-        )
-      }
-    }),
+  () => import('@/components/map').then((mod) => mod.MapComponent),
   { ssr: false }
 )
 
@@ -69,8 +48,6 @@ export default function PackageDetailPage({ params }: { params: Promise<{ id: st
   const [bookingSuccess, setBookingSuccess] = useState(false)
   const [inquirySuccess, setInquirySuccess] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
-  const [fetchedCoordinates, setFetchedCoordinates] = useState<[number, number] | null>(null)
-  const [geocodingError, setGeocodingError] = useState<string | null>(null)
 
   // Unwrap params using React.use to resolve the Promise
   const { id: packageId } = React.use(params)
@@ -105,41 +82,6 @@ export default function PackageDetailPage({ params }: { params: Promise<{ id: st
 
     fetchPackageDetail()
   }, [packageId])
-
-  // Fetch coordinates using Nominatim API
-  useEffect(() => {
-    if (!packageDetail) return
-
-    const fetchCoordinates = async () => {
-      try {
-        const address = `${packageDetail.location}, ${packageDetail.region}, Ethiopia`
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`
-        )
-        const data = await response.json()
-
-        if (data.length > 0) {
-          const { lat, lon } = data[0]
-          if (lat && lon && !isNaN(Number(lat)) && !isNaN(Number(lon))) {
-            setFetchedCoordinates([Number(lat), Number(lon)])
-            setGeocodingError(null)
-          } else {
-            setGeocodingError("Invalid coordinates received for this address.")
-            setFetchedCoordinates(null)
-          }
-        } else {
-          setGeocodingError("No coordinates found for this address.")
-          setFetchedCoordinates(null)
-        }
-      } catch (error) {
-        console.error("Error fetching coordinates:", error)
-        setGeocodingError("Unable to load map location. Please try again later.")
-        setFetchedCoordinates(null)
-      }
-    }
-
-    fetchCoordinates()
-  }, [packageDetail])
 
   const handleBookNow = () => {
     if (!selectedDate) return
@@ -523,14 +465,8 @@ export default function PackageDetailPage({ params }: { params: Promise<{ id: st
                       <h2 className="text-2xl font-bold mb-6">Location</h2>
 
                       <div className="aspect-video relative rounded-lg overflow-hidden mb-6">
-                        {fetchedCoordinates ? (
-                          <DynamicMap coordinates={fetchedCoordinates} location={packageDetail.location} />
-                        ) : (
-                          <div className="flex items-center justify-center h-full bg-gray-100 rounded-lg">
-                            <p className="text-gray-500">
-                              {geocodingError || "Loading map location..."}
-                            </p>
-                          </div>
+                        {packageDetail && (
+                          <DynamicMap location={`${packageDetail.location}, ${packageDetail.region}, Ethiopia`} />
                         )}
                       </div>
 
@@ -715,7 +651,16 @@ export default function PackageDetailPage({ params }: { params: Promise<{ id: st
                           selected={selectedDate}
                           onSelect={(date) => setSelectedDate(date)}
                           initialFocus
-                          disabled={(date) => date < new Date()}
+                          disabled={(date) => {
+                            // Get today's date at midnight
+                            const today = new Date()
+                            today.setHours(0, 0, 0, 0)
+                            
+                            // Disable dates before today
+                            return date < today
+                          }}
+                          fromDate={new Date()} // Set minimum date to today
+                          toDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))} // Allow booking up to 1 year in advance
                         />
                       </PopoverContent>
                     </Popover>

@@ -100,12 +100,12 @@ export function Navbar() {
               <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse"></div>
             ) : isUserAuthenticated ? (
               <>
-                <Button variant="ghost" size="icon" className="relative rounded-md">
+                {/* <Button variant="ghost" size="icon" className="relative rounded-md">
                   <ClientOnly>
                     <Bell className="h-5 w-5" />
                   </ClientOnly>
                   <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-primary"></span>
-                </Button>
+                </Button> */}
 
                 <div className="hidden md:flex items-center space-x-2">
                   <DropdownMenu>

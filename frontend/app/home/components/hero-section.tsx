@@ -168,7 +168,7 @@ export const HeroSection = () => {
         </div>
       </motion.div>
 
-      <div className="absolute bottom-8 right-24 flex space-x-2 hidden md:flex">
+      <div className="absolute bottom-8 right-24 space-x-2 hidden md:flex">
         <div className="w-8 h-1 bg-white/30 rounded-full"></div>
         <div className="w-8 h-1 bg-white rounded-full"></div>
         <div className="w-8 h-1 bg-white/30 rounded-full"></div>

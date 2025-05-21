@@ -5,19 +5,33 @@ import { motion } from "framer-motion"
 import { useState } from "react"
 
 interface PackageCardProps {
-  id: string
+  id: number
   title: string
   location: string
+  region: string
   price: string
+  discounted_price: string
+  duration: string
   image: string
-  days: number
-  people: number
   description: string
 }
 
-export const PackageCard = ({ id, title, location, price, image, days, people, description }: PackageCardProps) => {
+export const PackageCard = ({ 
+  id, 
+  title, 
+  location, 
+  region,
+  price, 
+  discounted_price,
+  duration,
+  image, 
+  description 
+}: PackageCardProps) => {
   const [imageError, setImageError] = useState(false)
   const imageSrc = !imageError && image ? image : "/placeholder.svg"
+  
+  // Parse duration to get days
+  const days = duration.split(" ")[0]
 
   return (
     <motion.div
@@ -33,16 +47,21 @@ export const PackageCard = ({ id, title, location, price, image, days, people, d
           onError={() => setImageError(true)}
         />
         <div className="absolute top-2 right-2 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-bold text-[#E91E63]">
-          {price}
+          {discounted_price ? (
+            <div className="flex items-center gap-2">
+              <span className="line-through text-gray-500">{price}</span>
+              <span>{discounted_price}</span>
+            </div>
+          ) : (
+            price
+          )}
         </div>
       </div>
       <div className="p-4 flex-1 flex flex-col">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-2">
             <Clock className="h-4 w-4 text-gray-400" />
-            <span className="text-xs text-gray-500">{days} days</span>
-            <Users className="h-4 w-4 text-gray-400 ml-2" />
-            <span className="text-xs text-gray-500">{people} people going</span>
+            <span className="text-xs text-gray-500">{duration}</span>
           </div>
           <div className="flex">
             {[...Array(5)].map((_, i) => (
@@ -52,7 +71,7 @@ export const PackageCard = ({ id, title, location, price, image, days, people, d
         </div>
         <div className="flex items-center mb-2">
           <MapPin className="h-4 w-4 text-gray-400 mr-1" />
-          <span className="text-xs text-gray-500">{location}</span>
+          <span className="text-xs text-gray-500">{location}, {region}</span>
         </div>
         <h3 className="font-bold text-lg mb-2 hover:text-[#E91E63] transition-colors">{title}</h3>
         <p className="text-xs text-gray-600 mb-4 flex-1">{description}</p>
