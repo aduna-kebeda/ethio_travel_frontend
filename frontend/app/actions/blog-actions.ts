@@ -199,7 +199,6 @@ export async function getBlogCategories() {
   }
 }
 
-// Unchanged createBlogPost per request
 export async function createBlogPost(data: BlogPostData) {
   try {
     // Check authentication
@@ -395,24 +394,62 @@ export async function getComments(postId: number): Promise<Comment[]> {
   }
 }
 
+/*
+// Disabled due to non-functional /helpful/ endpoint (returns 500 Internal Server Error)
 export async function markCommentHelpful(postId: number, commentId: number): Promise<{ success: boolean }> {
   try {
+    // Validate inputs
+    if (!Number.isInteger(postId) || postId <= 0) {
+      throw new Error("Invalid post ID")
+    }
+    if (!Number.isInteger(commentId) || commentId <= 0) {
+      throw new Error("Invalid comment ID")
+    }
+
+    // Verify authentication
+    const isAuth = await isAuthenticated()
+    if (!isAuth) {
+      throw new Error("Authentication required: You must be logged in to mark a comment as helpful")
+    }
+
     const headers = await buildHeaders(true)
+    console.log(`Marking comment ${commentId} as helpful for post ${postId}`)
+
     const response = await fetch(`${API_BASE_URL}/api/blog/posts/${postId}/comments/${commentId}/helpful/`, {
       method: "POST",
       headers,
+      cache: "no-store",
     })
 
     if (!response.ok) {
-      throw new Error(`Failed to mark comment as helpful: ${response.status}`)
+      let errorMessage = `Failed to mark comment as helpful: ${response.status}`
+      try {
+        const errorData = await response.json()
+        console.error("Error response data:", errorData)
+        if (errorData && typeof errorData === "object") {
+          const errorDetails = Object.entries(errorData)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join(", ")
+          errorMessage += ` - ${errorDetails}`
+        }
+      } catch (e) {
+        const errorText = await response.text()
+        console.error("Error response text:", errorText)
+        if (errorText) {
+          errorMessage += ` - ${errorText}`
+        }
+      }
+      throw new Error(errorMessage)
     }
 
+    console.log("Comment marked as helpful successfully")
     return { success: true }
   } catch (error) {
     console.error("Error marking comment as helpful:", error)
-    throw error
+    throw error instanceof Error ? error : new Error("An unexpected error occurred")
   }
 }
+*/
 
 export async function reportComment(postId: number, commentId: number): Promise<{ success: boolean }> {
   try {

@@ -5,9 +5,9 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { addComment, getComments, markCommentHelpful, reportComment } from "@/app/actions/blog-actions"
+import { addComment, getComments, reportComment } from "@/app/actions/blog-actions"
 import { useToast } from "@/hooks/use-toast"
-import { MessageCircle, ThumbsUp, Flag, Loader2 } from "lucide-react"
+import { MessageCircle, Flag, Loader2 } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 
 interface Author {
@@ -112,40 +112,6 @@ export function CommentSection({ postId, initialComments = [] }: CommentSectionP
     }
   }
 
-  const handleMarkHelpful = async (commentId: number) => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to mark comments as helpful.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    try {
-      await markCommentHelpful(postId, commentId)
-
-      // Update the comment in the UI
-      setComments(
-        comments.map((comment) =>
-          comment.id === commentId ? { ...comment, helpful_count: comment.helpful_count + 1 } : comment,
-        ),
-      )
-
-      toast({
-        title: "Marked as helpful",
-        description: "Thank you for your feedback!",
-      })
-    } catch (error) {
-      console.error("Error marking comment as helpful:", error)
-      toast({
-        title: "Error",
-        description: "Failed to mark comment as helpful. Please try again.",
-        variant: "destructive",
-      })
-    }
-  }
-
   const handleReportComment = async (commentId: number) => {
     if (!isAuthenticated) {
       toast({
@@ -247,14 +213,7 @@ export function CommentSection({ postId, initialComments = [] }: CommentSectionP
               </div>
               <p className="text-gray-700 mb-3">{comment.content}</p>
               <div className="flex items-center text-sm text-gray-500">
-                <button
-                  className="flex items-center mr-4 hover:text-primary"
-                  onClick={() => handleMarkHelpful(comment.id)}
-                  disabled={comment.reported}
-                >
-                  <ThumbsUp className="h-4 w-4 mr-1" />
-                  Helpful ({comment.helpful_count})
-                </button>
+                {/* Removed Mark as Helpful button due to non-functional endpoint */}
                 <button
                   className="flex items-center hover:text-red-500"
                   onClick={() => handleReportComment(comment.id)}

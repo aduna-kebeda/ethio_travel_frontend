@@ -2,77 +2,105 @@ import { v4 as uuidv4 } from "uuid"
 
 type ProgressCallback = (progress: number) => void
 
-/**
- * Compresses an image file before upload
- * @param file The image file to compress
- * @param maxWidth Maximum width in pixels
- * @param quality Compression quality (0-1)
- */
+// Improve the compressImage function to handle errors better
 export const compressImage = async (file: File, maxWidth = 1200, quality = 0.8): Promise<File> => {
   return new Promise((resolve, reject) => {
     // Skip compression for non-image files or SVGs
     if (!file.type.startsWith("image/") || file.type === "image/svg+xml") {
+      console.log("Skipping compression for non-image or SVG file:", file.name)
       resolve(file)
       return
     }
 
-    const reader = new FileReader()
-    reader.readAsDataURL(file)
-    reader.onload = (event) => {
-      const img = new Image()
-      img.src = event.target?.result as string
+    console.log(`Starting image compression for ${file.name}, size: ${file.size} bytes`)
 
-      img.onload = () => {
-        // Calculate new dimensions
-        let width = img.width
-        let height = img.height
+    try {
+      const reader = new FileReader()
 
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width)
-          width = maxWidth
-        }
+      reader.onload = (event) => {
+        try {
+          const img = new Image()
 
-        // Create canvas and draw image
-        const canvas = document.createElement("canvas")
-        canvas.width = width
-        canvas.height = height
+          img.onload = () => {
+            try {
+              // Calculate new dimensions
+              let width = img.width
+              let height = img.height
 
-        const ctx = canvas.getContext("2d")
-        if (!ctx) {
-          resolve(file) // Fallback to original if canvas context fails
-          return
-        }
+              console.log(`Original dimensions: ${width}x${height}`)
 
-        ctx.drawImage(img, 0, 0, width, height)
+              if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width)
+                width = maxWidth
+                console.log(`Resizing to: ${width}x${height}`)
+              } else {
+                console.log("No resizing needed, image is within max width")
+              }
 
-        // Convert to blob
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              resolve(file) // Fallback to original if blob creation fails
-              return
+              // Create canvas and draw image
+              const canvas = document.createElement("canvas")
+              canvas.width = width
+              canvas.height = height
+
+              const ctx = canvas.getContext("2d")
+              if (!ctx) {
+                console.warn("Could not get canvas context, returning original file")
+                resolve(file) // Fallback to original if canvas context fails
+                return
+              }
+
+              ctx.drawImage(img, 0, 0, width, height)
+
+              // Convert to blob
+              canvas.toBlob(
+                (blob) => {
+                  if (!blob) {
+                    console.warn("Blob creation failed, returning original file")
+                    resolve(file) // Fallback to original if blob creation fails
+                    return
+                  }
+
+                  // Create new file from blob
+                  const newFile = new File([blob], file.name, {
+                    type: file.type,
+                    lastModified: Date.now(),
+                  })
+
+                  console.log(
+                    `Compression complete: ${file.size} → ${newFile.size} bytes (${Math.round((newFile.size / file.size) * 100)}%)`,
+                  )
+                  resolve(newFile)
+                },
+                file.type,
+                quality,
+              )
+            } catch (canvasError) {
+              console.error("Error during canvas operations:", canvasError)
+              resolve(file) // Fallback to original
             }
+          }
 
-            // Create new file from blob
-            const newFile = new File([blob], file.name, {
-              type: file.type,
-              lastModified: Date.now(),
-            })
+          img.onerror = (imgError) => {
+            console.error("Error loading image:", imgError)
+            resolve(file) // Fallback to original if image loading fails
+          }
 
-            resolve(newFile)
-          },
-          file.type,
-          quality,
-        )
+          img.src = event.target?.result as string
+        } catch (imgError) {
+          console.error("Error creating image:", imgError)
+          resolve(file) // Fallback to original
+        }
       }
 
-      img.onerror = () => {
-        resolve(file) // Fallback to original if image loading fails
+      reader.onerror = (readerError) => {
+        console.error("Error reading file:", readerError)
+        resolve(file) // Fallback to original if file reading fails
       }
-    }
 
-    reader.onerror = () => {
-      resolve(file) // Fallback to original if file reading fails
+      reader.readAsDataURL(file)
+    } catch (error) {
+      console.error("Unexpected error during compression:", error)
+      resolve(file) // Fallback to original
     }
   })
 }

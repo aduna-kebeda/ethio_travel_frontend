@@ -316,6 +316,7 @@ export default function RegisterBusinessPage() {
     return Object.keys(errors).length === 0
   }
 
+  // Update the handleSubmit function to improve progress tracking and error handling
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -331,6 +332,46 @@ export default function RegisterBusinessPage() {
     try {
       setIsSubmitting(true)
       setUploadProgress(10)
+
+      // Show a more detailed toast for the upload process
+      const uploadToastId = toast({
+        title: "Uploading business data",
+        description: "Starting image uploads...",
+        duration: 30000, // Longer duration since this is a longer process
+      })
+
+      // Create a progress updater function
+      const updateProgress = (stage: string, progress: number) => {
+        // Map progress to different stages
+        let totalProgress = 0
+        if (stage === "preparing") {
+          totalProgress = 10 + progress * 0.1 // 10-20%
+        } else if (stage === "uploading") {
+          totalProgress = 20 + progress * 0.6 // 20-80%
+        } else if (stage === "finalizing") {
+          totalProgress = 80 + progress * 0.2 // 80-100%
+        }
+
+        setUploadProgress(Math.round(totalProgress))
+
+        // Update the toast message
+        // If your toast library supports updating by a returned id, use that API here.
+        // Otherwise, you may need to dismiss and re-show, or simply show a new toast.
+        toast({
+          title: "Uploading business data",
+          description: `${
+            stage === "preparing"
+              ? "Preparing images..."
+              : stage === "uploading"
+                ? "Uploading images..."
+                : "Finalizing registration..."
+          }`,
+          duration: 30000,
+        })
+      }
+
+      // Prepare the business data
+      updateProgress("preparing", 50)
 
       const businessData: BusinessData = {
         businessName: formData.businessName!,
@@ -357,18 +398,30 @@ export default function RegisterBusinessPage() {
         id: "", // Provide a default or generated value for id
       }
 
-      setUploadProgress(20)
+      updateProgress("preparing", 100)
+      updateProgress("uploading", 0)
 
-      // Show a more detailed toast for the upload process
-      const uploadToastId = toast({
-        title: "Uploading business data",
-        description: "Starting image uploads...",
-        duration: 10000, // Longer duration since this is a longer process
-      })
+      // Set up progress tracking with periodic updates
+      let uploadProgressCounter = 0
+      const progressInterval = setInterval(() => {
+        uploadProgressCounter += 5
+        if (uploadProgressCounter <= 100) {
+          updateProgress("uploading", uploadProgressCounter)
+        } else {
+          clearInterval(progressInterval)
+        }
+      }, 500)
 
       console.log("Submitting business data:", businessData)
 
+      // Submit the business data
       const result = await registerBusiness(businessData)
+
+      // Clear the progress interval
+      clearInterval(progressInterval)
+
+      // Complete the progress
+      updateProgress("finalizing", 100)
       setUploadProgress(100)
 
       // Dismiss the upload toast
@@ -399,7 +452,6 @@ export default function RegisterBusinessPage() {
       })
     } finally {
       setIsSubmitting(false)
-      setUploadProgress(0)
     }
   }
 
