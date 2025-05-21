@@ -23,7 +23,7 @@ export function Footer() {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="bg-[#FCE4EC] text-gray-700 py-12">
+    <footer className="bg-[#FCE4EC] text-gray-700 py-6 pt-10">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-1">
@@ -130,7 +130,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-gray-200 mt-12 pt-8">
+        <div className="border-t border-gray-200 mt-6 pt-4">
           <p className="text-center text-sm">© {currentYear} EthioTravel. All rights reserved.</p>
         </div>
       </div>

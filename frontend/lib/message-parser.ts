@@ -130,10 +130,6 @@ export const detectIntent = (message: string): string => {
     return "pricing"
   }
 
-  if (/\b(?:weather|temperature|climate|rain|sunny)\b/i.test(lowerMessage)) {
-    return "weather"
-  }
-
   if (/\b(?:food|eat|restaurant|cuisine|dish)\b/i.test(lowerMessage)) {
     return "food"
   }
@@ -154,10 +150,6 @@ export const detectIntent = (message: string): string => {
     return "safety"
   }
 
-  if (/\b(?:visa|passport|document|requirement)\b/i.test(lowerMessage)) {
-    return "visa"
-  }
-
   if (/\b(?:currency|money|exchange|cash|payment)\b/i.test(lowerMessage)) {
     return "currency"
   }
@@ -176,10 +168,6 @@ export const detectIntent = (message: string): string => {
 
   if (/\b(?:recommendation|suggest|recommend|best)\b/i.test(lowerMessage)) {
     return "recommendation"
-  }
-
-  if (/\b(?:human|agent|person|representative|real person)\b/i.test(lowerMessage)) {
-    return "human_agent"
   }
 
   // Check for location names
@@ -223,15 +211,6 @@ export const generateQuickReplies = (message: string, intent: string): { id: str
         { id: "best_time", text: "Best time to visit" },
         { id: "plan_trip", text: "Help me plan a trip" },
         { id: "about_ethiopia", text: "Tell me about Ethiopia" },
-      )
-      break
-
-    case "weather":
-      replies.push(
-        { id: "weather_addis", text: "Weather in Addis Ababa" },
-        { id: "weather_lalibela", text: "Weather in Lalibela" },
-        { id: "weather_danakil", text: "Weather in Danakil" },
-        { id: "best_season", text: "Best season to visit" },
       )
       break
 
@@ -280,15 +259,6 @@ export const generateQuickReplies = (message: string, intent: string): { id: str
       )
       break
 
-    case "visa":
-      replies.push(
-        { id: "visa_requirements", text: "Visa requirements" },
-        { id: "visa_process", text: "Application process" },
-        { id: "visa_on_arrival", text: "Visa on arrival" },
-        { id: "embassy_info", text: "Embassy information" },
-      )
-      break
-
     case "currency":
       replies.push(
         { id: "exchange_rates", text: "Exchange rates" },
@@ -325,9 +295,6 @@ export const generateQuickReplies = (message: string, intent: string): { id: str
         { id: "travel_tips", text: "Travel tips" },
       )
   }
-
-  // Always add human agent option
-  replies.push({ id: "human_agent", text: "Speak to a human agent" })
 
   return replies
 }

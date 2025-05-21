@@ -1,53 +1,9 @@
 import { Container } from "@/components/container"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Search } from "lucide-react"
 import Image from "next/image"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useState, useCallback } from "react"
+import Link from "next/link"
 
 export function HeroSection() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const [searchQuery, setSearchQuery] = useState(searchParams.get("query") || "")
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "")
-
-  const handleSearch = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault()
-      const params = new URLSearchParams(searchParams.toString())
-      if (searchQuery) {
-        params.set("query", searchQuery)
-      } else {
-        params.delete("query")
-      }
-      if (selectedCategory) {
-        params.set("category", selectedCategory)
-      } else {
-        params.delete("category")
-      }
-      router.push(`/business?${params.toString()}`)
-    },
-    [searchQuery, selectedCategory, router, searchParams]
-  )
-
-  const handleCategoryClick = useCallback(
-    (category: string) => {
-      setSelectedCategory(category === selectedCategory ? "" : category)
-      const params = new URLSearchParams(searchParams.toString())
-      if (category === selectedCategory) {
-        params.delete("category")
-      } else {
-        params.set("category", category)
-      }
-      if (searchQuery) {
-        params.set("query", searchQuery)
-      }
-      router.push(`/business?${params.toString()}`)
-    },
-    [selectedCategory, searchQuery, router, searchParams]
-  )
-
   return (
     <div className="relative w-full h-[500px] overflow-hidden">
       {/* Background Image */}
@@ -69,39 +25,14 @@ export function HeroSection() {
           Find the best local businesses, restaurants, hotels, and services across Ethiopia
         </p>
 
-        <div className="w-full max-w-2xl backdrop-blur-sm bg-white/10 rounded-lg p-2 shadow-xl">
-          <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-2">
-            <div className="relative flex-grow">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Search for businesses..."
-                className="pl-10 bg-white/90 border-0 h-12 text-gray-800 placeholder:text-gray-500 focus-visible:ring-primary"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <Button type="submit" className="h-12 px-6 bg-primary rounded-r-full hover:bg-primary/90 text-white">
-              Search
-            </Button>
-          </form>
-
-          <div className="flex flex-wrap justify-center gap-2 mt-4">
-            {["Hotels", "Restaurants", "Tour Operators", "Shops"].map((category) => (
-              <Button
-                key={category}
-                variant="outline"
-                size="sm"
-                onClick={() => handleCategoryClick(category)}
-                className={`${
-                  selectedCategory === category
-                    ? "bg-white/30 text-white border-white"
-                    : "bg-white/20 text-white border-white/30 hover:bg-white/30 hover:text-white"
-                }`}
-              >
-                {category}
-              </Button>
-            ))}
+        <div className="w-full max-w-2xl backdrop-blur-sm bg-white/10 rounded-lg p-6 shadow-xl">
+          <h2 className="text-2xl font-semibold text-white mb-4">Ready to Grow Your Business?</h2>
+          <p className="text-white/90 mb-6">
+            Join our community of local businesses and connect with customers across Ethiopia
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+           
+              
           </div>
         </div>
       </Container>

@@ -102,8 +102,7 @@ export default function ChatbotPage() {
     }
     return [
       { id: "destinations", text: "Popular destinations" },
-      { id: "visa", text: "Visa requirements" },
-      { id: "weather", text: "Check weather" },
+      
       { id: "human", text: "Speak to a human" },
     ]
   }

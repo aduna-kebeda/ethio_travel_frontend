@@ -165,18 +165,18 @@ export function Navbar() {
                       {user.first_name ? `${user.first_name} ${user.last_name}` : user.username}
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-gray-200" />
-                    <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
+                    {/* <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
                       <Link href="/profile">My Profile</Link>
-                    </DropdownMenuItem>
+                    </DropdownMenuItem> */}
                     <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
                       <Link href="/business/my-business">My Business</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
                       <Link href="/blog/my-posts">My Blog Posts</Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
+                    {/* <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
                       <Link href="/settings">Settings</Link>
-                    </DropdownMenuItem>
+                    </DropdownMenuItem> */}
                     <DropdownMenuSeparator className="bg-gray-200" />
                     <DropdownMenuItem
                       onClick={handleLogout}
