@@ -1,7 +1,8 @@
 import { Container } from "@/components/container"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Search } from "lucide-react"
 import Image from "next/image"
-import Link from "next/link"
 
 export function HeroSection() {
   return (
@@ -25,16 +26,7 @@ export function HeroSection() {
           Find the best local businesses, restaurants, hotels, and services across Ethiopia
         </p>
 
-        <div className="w-full max-w-2xl backdrop-blur-sm bg-white/10 rounded-lg p-6 shadow-xl">
-          <h2 className="text-2xl font-semibold text-white mb-4">Ready to Grow Your Business?</h2>
-          <p className="text-white/90 mb-6">
-            Join our community of local businesses and connect with customers across Ethiopia
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-           
-              
-          </div>
-        </div>
+        
       </Container>
     </div>
   )
