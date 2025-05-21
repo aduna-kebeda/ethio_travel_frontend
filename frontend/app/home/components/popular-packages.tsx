@@ -160,12 +160,12 @@ export const PopularPackages = () => {
             but don't know how use our special
           </h2>
 
-          <button
+          {/* <button
             className="mt-4 bg-[#E91E63] text-white px-6 py-3 rounded-full hover:bg-[#D81B60] transform hover:scale-105 transition-all duration-300"
             onClick={handleCreateTrip}
           >
             Create a new trip with AI
-          </button>
+          </button> */}
         </motion.div>
       </div>
     </section>

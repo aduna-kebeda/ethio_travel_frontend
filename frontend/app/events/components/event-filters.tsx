@@ -59,7 +59,7 @@ const EventFilters = () => {
               <SelectTrigger>
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white">
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value="cultural">Cultural</SelectItem>
                 <SelectItem value="music">Music</SelectItem>

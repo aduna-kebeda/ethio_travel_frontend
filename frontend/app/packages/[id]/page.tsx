@@ -112,7 +112,7 @@ export default function PackageDetailPage({ params }: { params: Promise<{ id: st
 
     const fetchCoordinates = async () => {
       try {
-        const address = `${packageDetail.location}, ${packageDetail.region}, Ethiopia` // Added country for specificity
+        const address = `${packageDetail.location}, ${packageDetail.region}, Ethiopia`
         const response = await fetch(
           `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`
         )
@@ -124,19 +124,17 @@ export default function PackageDetailPage({ params }: { params: Promise<{ id: st
             setFetchedCoordinates([Number(lat), Number(lon)])
             setGeocodingError(null)
           } else {
-            // Invalid coordinates received
             setGeocodingError("Invalid coordinates received for this address.")
-            setFetchedCoordinates(null) // Optional: set default coordinates, e.g., [9.03, 38.74] for Addis Ababa
+            setFetchedCoordinates(null)
           }
         } else {
-          // No coordinates found
           setGeocodingError("No coordinates found for this address.")
-          setFetchedCoordinates(null) // Optional: set default coordinates
+          setFetchedCoordinates(null)
         }
       } catch (error) {
         console.error("Error fetching coordinates:", error)
         setGeocodingError("Unable to load map location. Please try again later.")
-        setFetchedCoordinates(null) // Optional: set default coordinates
+        setFetchedCoordinates(null)
       }
     }
 
@@ -705,17 +703,17 @@ export default function PackageDetailPage({ params }: { params: Promise<{ id: st
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
-                          className="w-full justify-start text-left font-normal border-gray-300"
+                          className="w-full justify-start text-left font-normal border-gray-300 focus:ring-2 focus:ring-[#E91E63]"
                         >
                           <Calendar className="mr-2 h-4 w-4" />
                           {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
+                      <PopoverContent className="w-auto p-0 bg-white">
                         <CalendarComponent
                           mode="single"
                           selected={selectedDate}
-                          onSelect={setSelectedDate}
+                          onSelect={(date) => setSelectedDate(date)}
                           initialFocus
                           disabled={(date) => date < new Date()}
                         />
@@ -744,7 +742,7 @@ export default function PackageDetailPage({ params }: { params: Promise<{ id: st
                           min="1"
                           value={adults}
                           onChange={(e) => setAdults(Number.parseInt(e.target.value) || 1)}
-                          className="rounded-none text-center w-12 p-0 border-l-0 border-r-0"
+                          className="rounded-none text-center w-12 p-0 border-l-0 border-r- SMOOTH0"
                         />
                         <Button
                           type="button"
