@@ -20,15 +20,19 @@ export default function VerifyEmailPage() {
   const [success, setSuccess] = useState(false)
   const [countdown, setCountdown] = useState(60)
   const [canResend, setCanResend] = useState(false)
+  const [isEmailDisabled, setIsEmailDisabled] = useState(false)
 
   useEffect(() => {
     // Get email from session storage
-    const storedEmail = sessionStorage.getItem("registrationEmail")
-    if (storedEmail) {
-      setEmail(storedEmail)
-      console.log("Found email in session storage:", storedEmail)
-    } else {
-      console.log("No email found in session storage")
+    if (typeof window !== "undefined") {
+      const storedEmail = sessionStorage.getItem("registrationEmail")
+      if (storedEmail) {
+        setEmail(storedEmail)
+        setIsEmailDisabled(true)
+        console.log("Found email in session storage:", storedEmail)
+      } else {
+        console.log("No email found in session storage")
+      }
     }
 
     // Countdown for resend button
@@ -133,7 +137,7 @@ export default function VerifyEmailPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="john@example.com"
               required
-              disabled={!!sessionStorage.getItem("registrationEmail")}
+              disabled={isEmailDisabled}
             />
           </div>
 

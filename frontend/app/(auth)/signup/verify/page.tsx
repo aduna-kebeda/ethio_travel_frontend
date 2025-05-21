@@ -21,12 +21,17 @@ export default function VerifyEmailPage() {
   const [success, setSuccess] = useState(false)
   const [countdown, setCountdown] = useState(60)
   const [canResend, setCanResend] = useState(false)
+  const [isEmailDisabled, setIsEmailDisabled] = useState(false)
 
   useEffect(() => {
-    // Get email from session storage
-    const storedEmail = sessionStorage.getItem("registrationEmail")
-    if (storedEmail) {
-      setEmail(storedEmail)
+    // Only access sessionStorage in browser environment
+    if (typeof window !== "undefined") {
+      // Get email from session storage
+      const storedEmail = sessionStorage.getItem("registrationEmail")
+      if (storedEmail) {
+        setEmail(storedEmail)
+        setIsEmailDisabled(true)
+      }
     }
 
     // Countdown for resend button
@@ -129,7 +134,7 @@ export default function VerifyEmailPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="john@example.com"
               required
-              disabled={!!sessionStorage.getItem("registrationEmail")}
+              disabled={isEmailDisabled}
             />
           </div>
 
