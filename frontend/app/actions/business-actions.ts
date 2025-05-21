@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers"
 import { cache } from "react"
+import { uploadToCloudinary } from '@/lib/cloudinary-config'
 
 // Business types
 export interface BusinessData {
@@ -83,33 +84,30 @@ function toSnakeCase(obj: any): any {
   return snakeCaseObj
 }
 
-// Upload image using the API route instead of direct Cloudinary SDK
+// Update the uploadImage function to use the new Cloudinary configuration
 async function uploadImage(file: File): Promise<string> {
   try {
     console.log("Preparing to upload image:", file.name, "size:", file.size)
-
-    // Create form data
-    const formData = new FormData()
-    formData.append("file", file)
-    formData.append("upload_preset", "businesses")
-
-    // Use the API route for upload
-    const response = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    })
-
-    if (!response.ok) {
-      throw new Error(`Upload failed with status: ${response.status}`)
-    }
-
-    const data = await response.json()
-    console.log("Image uploaded successfully:", data.url)
-    return data.url
+    
+    // Use the new Cloudinary upload function
+    const imageUrl = await uploadToCloudinary(file, 'businesses/businesses')
+    console.log("Image uploaded successfully:", imageUrl)
+    
+    return imageUrl
   } catch (error) {
     console.error("Error uploading image:", error)
-    // Return a placeholder image URL if upload fails
-    return `/placeholder.svg?height=800&width=1200&text=${encodeURIComponent(file.name || "Image Upload Failed")}`
+    // Return a valid placeholder URL instead of failing
+    return "https://res.cloudinary.com/dpasgcaqm/image/upload/v1715021234/placeholder_business_image.jpg"
+  }
+}
+
+// Add a URL validation helper function
+function isValidUrl(string: string): boolean {
+  try {
+    new URL(string)
+    return true
+  } catch (_) {
+    return false
   }
 }
 
@@ -571,7 +569,20 @@ export const getBusinessesByUserId = cache(async (userId: string): Promise<Busin
   return mockBusinesses
 })
 
-// Update the registerBusiness function to use the API route for image uploads
+// Add a helper function to format URLs
+function formatUrl(url: string | undefined | null): string | null {
+  if (!url) return null;
+  
+  // If URL already has http:// or https://, return as is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  
+  // Add https:// prefix if missing
+  return `https://${url}`;
+}
+
+// Update the registerBusiness function
 export async function registerBusiness(
   businessData: BusinessData,
 ): Promise<{ success: boolean; data?: any; error?: string }> {
@@ -605,60 +616,85 @@ export async function registerBusiness(
       try {
         console.log("Uploading main image:", updatedBusinessData.mainImage.name)
         const imageUrl = await uploadImage(updatedBusinessData.mainImage)
+
+        // Ensure we have a valid URL
+        if (!isValidUrl(imageUrl)) {
+          throw new Error("Invalid URL returned from image upload")
+        }
+
         updatedBusinessData.mainImage = imageUrl
         console.log("Main image uploaded successfully:", imageUrl)
       } catch (error) {
         console.error("Error uploading main image:", error)
-        // Use a placeholder instead of failing
-        updatedBusinessData.mainImage = `/placeholder.svg?height=800&width=1200&text=${encodeURIComponent(updatedBusinessData.businessName || "Business")}`
+        // Use a valid placeholder URL instead of failing
+        updatedBusinessData.mainImage =
+          "https://res.cloudinary.com/dpasgcaqm/image/upload/v1715021234/placeholder_business_image.jpg"
         console.log("Using placeholder for main image")
       }
     } else if (
       typeof updatedBusinessData.mainImage === "string" &&
-      !validateCloudinaryUrl(updatedBusinessData.mainImage)
+      !validateCloudinaryUrl(updatedBusinessData.mainImage) &&
+      !isValidUrl(updatedBusinessData.mainImage)
     ) {
       console.error("Invalid main image URL:", updatedBusinessData.mainImage)
-      // Use a placeholder instead of failing
-      updatedBusinessData.mainImage = `/placeholder.svg?height=800&width=1200&text=${encodeURIComponent(updatedBusinessData.businessName || "Business")}`
+      // Use a valid placeholder URL instead of failing
+      updatedBusinessData.mainImage =
+        "https://res.cloudinary.com/dpasgcaqm/image/upload/v1715021234/placeholder_business_image.jpg"
       console.log("Using placeholder for invalid main image URL")
     }
 
-    // Handle gallery images upload using the API route
-    if (
-      Array.isArray(updatedBusinessData.galleryImages) &&
-      updatedBusinessData.galleryImages.length > 0 &&
-      updatedBusinessData.galleryImages[0] instanceof File
-    ) {
+    // Handle gallery images upload and format as a comma-separated string
+    let galleryImagesString = ""
+    if (Array.isArray(updatedBusinessData.galleryImages) && updatedBusinessData.galleryImages.length > 0) {
       try {
-        console.log(`Uploading ${updatedBusinessData.galleryImages.length} gallery images`)
-        // Process images sequentially to avoid overwhelming the server
-        const galleryUrls = []
+        console.log(`Processing ${updatedBusinessData.galleryImages.length} gallery images`)
+        const galleryUrls: string[] = []
+
+        // Process each gallery image
         for (let i = 0; i < updatedBusinessData.galleryImages.length; i++) {
-          const file = updatedBusinessData.galleryImages[i] as File
-          try {
-            console.log(`Uploading gallery image ${i + 1}/${updatedBusinessData.galleryImages.length}:`, file.name)
-            const url = await uploadImage(file)
-            galleryUrls.push(url)
-            console.log(`Gallery image ${i + 1} uploaded:`, url)
-          } catch (error) {
-            console.error(`Error uploading gallery image ${i + 1}:`, error)
-            // Add a placeholder for failed uploads
-            galleryUrls.push(`/placeholder.svg?height=800&width=1200&text=${encodeURIComponent(`Gallery ${i + 1}`)}`)
+          const item = updatedBusinessData.galleryImages[i]
+
+          if (item instanceof File) {
+            try {
+              console.log(`Uploading gallery image ${i + 1}/${updatedBusinessData.galleryImages.length}:`, item.name)
+              const url = await uploadImage(item)
+              if (isValidUrl(url)) {
+                galleryUrls.push(url)
+                console.log(`Gallery image ${i + 1} uploaded:`, url)
+              }
+            } catch (error) {
+              console.error(`Error uploading gallery image ${i + 1}:`, error)
+            }
+          } else if (typeof item === "string" && isValidUrl(item)) {
+            galleryUrls.push(item)
           }
         }
-        updatedBusinessData.galleryImages = galleryUrls.join(",")
-        console.log(`Successfully processed ${galleryUrls.length} gallery images`)
+
+        // Join URLs with commas as expected by the backend
+        if (galleryUrls.length > 0) {
+          galleryImagesString = galleryUrls.join(",")
+          console.log(`Gallery images processed as string: ${galleryImagesString}`)
+        } else {
+          // If no valid gallery images, set to null instead of empty string
+          galleryImagesString = ""
+        }
       } catch (error) {
         console.error("Error processing gallery images:", error)
-        updatedBusinessData.galleryImages = ""
+        galleryImagesString = ""
       }
-    } else if (
-      updatedBusinessData.galleryImages &&
-      typeof updatedBusinessData.galleryImages === "string" &&
-      !updatedBusinessData.galleryImages.split(",").every((url) => validateCloudinaryUrl(url.trim()))
-    ) {
-      console.error("Invalid gallery image URLs:", updatedBusinessData.galleryImages)
-      updatedBusinessData.galleryImages = ""
+    } else if (typeof updatedBusinessData.galleryImages === "string") {
+      galleryImagesString = updatedBusinessData.galleryImages
+    }
+
+    // Format social media links as a string if needed
+    let socialMediaLinksString = ""
+    if (updatedBusinessData.facebook || updatedBusinessData.instagram) {
+      const links = []
+      if (updatedBusinessData.facebook) links.push(updatedBusinessData.facebook)
+      if (updatedBusinessData.instagram) links.push(updatedBusinessData.instagram)
+      socialMediaLinksString = links.join(",")
+    } else if (typeof updatedBusinessData.socialMediaLinks === "string") {
+      socialMediaLinksString = updatedBusinessData.socialMediaLinks
     }
 
     // Map frontend fields to backend expected fields
@@ -671,34 +707,32 @@ export async function registerBusiness(
       address: updatedBusinessData.address,
       contact_phone: updatedBusinessData.phone,
       contact_email: updatedBusinessData.email,
-      website: updatedBusinessData.website,
-      facebook: updatedBusinessData.facebook,
-      instagram: updatedBusinessData.instagram,
-      opening_hours: updatedBusinessData.openingHours,
-      facilities: updatedBusinessData.facilities,
-      services: updatedBusinessData.services,
-      team: updatedBusinessData.team,
-      latitude: updatedBusinessData.latitude,
-      longitude: updatedBusinessData.longitude,
+      website: formatUrl(updatedBusinessData.website),
+      facebook: formatUrl(updatedBusinessData.facebook),
+      instagram: formatUrl(updatedBusinessData.instagram),
+      opening_hours: updatedBusinessData.openingHours || null,
+      facilities: updatedBusinessData.facilities || null,
+      services: updatedBusinessData.services || null,
+      team: updatedBusinessData.team || null,
+      latitude: updatedBusinessData.latitude || null,
+      longitude: updatedBusinessData.longitude || null,
       main_image: updatedBusinessData.mainImage,
-      gallery_images: updatedBusinessData.galleryImages,
-      social_media_links: updatedBusinessData.socialMediaLinks,
+      gallery_images: galleryImagesString || null,
+      social_media_links: socialMediaLinksString || null,
     }
 
-    // Convert to snake_case for API
-    const requestBody = toSnakeCase(mappedBusinessData)
-    console.log("Sending business data to backend:", requestBody)
+    console.log("Sending business data to backend:", mappedBusinessData)
 
-    // Try to send data to API with timeout to prevent long waits
+    // Send data directly to the backend API with proper headers
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout for larger uploads
 
       const headers = await buildHeaders(true)
       const response = await fetch("https://ai-driven-travel.onrender.com/api/business/businesses/", {
         method: "POST",
         headers,
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify(mappedBusinessData),
         signal: controller.signal,
       })
 
@@ -726,18 +760,7 @@ export async function registerBusiness(
           console.error("Could not parse error response:", e)
         }
 
-        // If API fails, try the fallback
-        console.log("API registration failed, using fallback mock registration")
-        return {
-          success: true,
-          data: {
-            id: `mock-${Date.now()}`,
-            name: updatedBusinessData.businessName,
-            business_type: updatedBusinessData.businessType,
-            // Include other fields as needed
-            message: "Business registered successfully (mock data - API unavailable)",
-          },
-        }
+        return { success: false, error: errorMessage }
       }
 
       // Success case
@@ -746,17 +769,9 @@ export async function registerBusiness(
       return { success: true, data }
     } catch (apiError) {
       console.error("API request error:", apiError)
-
-      // Fallback to mock success if API is unavailable
       return {
-        success: true,
-        data: {
-          id: `mock-${Date.now()}`,
-          name: updatedBusinessData.businessName,
-          business_type: updatedBusinessData.businessType,
-          // Include other fields as needed
-          message: "Business registered successfully (mock data - API unavailable)",
-        },
+        success: false,
+        error: apiError instanceof Error ? apiError.message : "Failed to connect to the server",
       }
     }
   } catch (error) {
@@ -805,42 +820,58 @@ export async function updateBusiness(
       return { success: false, error: "Invalid main image URL" }
     }
 
-    // Handle gallery images upload using the API route
-    if (
-      Array.isArray(updatedBusinessData.galleryImages) &&
-      updatedBusinessData.galleryImages.length > 0 &&
-      updatedBusinessData.galleryImages[0] instanceof File
-    ) {
+    // Handle gallery images upload and format as a comma-separated string
+    let galleryImagesString = ""
+    if (Array.isArray(updatedBusinessData.galleryImages) && updatedBusinessData.galleryImages.length > 0) {
       try {
-        console.log(`Uploading ${updatedBusinessData.galleryImages.length} gallery images`)
-        // Process images sequentially
-        const galleryUrls = []
+        console.log(`Processing ${updatedBusinessData.galleryImages.length} gallery images`)
+        const galleryUrls: string[] = []
+
+        // Process each gallery image
         for (let i = 0; i < updatedBusinessData.galleryImages.length; i++) {
-          const file = updatedBusinessData.galleryImages[i] as File
-          try {
-            console.log(`Uploading gallery image ${i + 1}/${updatedBusinessData.galleryImages.length}:`, file.name)
-            const url = await uploadImage(file)
-            galleryUrls.push(url)
-            console.log(`Gallery image ${i + 1} uploaded:`, url)
-          } catch (error) {
-            console.error(`Error uploading gallery image ${i + 1}:`, error)
-            // Add a placeholder for failed uploads
-            galleryUrls.push(`/placeholder.svg?height=800&width=1200&text=${encodeURIComponent(`Gallery ${i + 1}`)}`)
+          const item = updatedBusinessData.galleryImages[i]
+
+          if (item instanceof File) {
+            try {
+              console.log(`Uploading gallery image ${i + 1}/${updatedBusinessData.galleryImages.length}:`, item.name)
+              const url = await uploadImage(item)
+              if (isValidUrl(url)) {
+                galleryUrls.push(url)
+                console.log(`Gallery image ${i + 1} uploaded:`, url)
+              }
+            } catch (error) {
+              console.error(`Error uploading gallery image ${i + 1}:`, error)
+            }
+          } else if (typeof item === "string" && isValidUrl(item)) {
+            galleryUrls.push(item)
           }
         }
-        updatedBusinessData.galleryImages = galleryUrls.join(",")
-        console.log(`Successfully processed ${galleryUrls.length} gallery images`)
+
+        // Join URLs with commas as expected by the backend
+        if (galleryUrls.length > 0) {
+          galleryImagesString = galleryUrls.join(",")
+          console.log(`Gallery images processed as string: ${galleryImagesString}`)
+        } else {
+          // If no valid gallery images, set to null instead of empty string
+          galleryImagesString = ""
+        }
       } catch (error) {
         console.error("Error processing gallery images:", error)
-        updatedBusinessData.galleryImages = ""
+        galleryImagesString = ""
       }
-    } else if (
-      updatedBusinessData.galleryImages &&
-      typeof updatedBusinessData.galleryImages === "string" &&
-      !updatedBusinessData.galleryImages.split(",").every((url) => validateCloudinaryUrl(url.trim()))
-    ) {
-      console.error("Invalid gallery image URLs:", updatedBusinessData.galleryImages)
-      return { success: false, error: "Invalid gallery image URLs" }
+    } else if (typeof updatedBusinessData.galleryImages === "string") {
+      galleryImagesString = updatedBusinessData.galleryImages
+    }
+
+    // Format social media links as a string if needed
+    let socialMediaLinksString = ""
+    if (updatedBusinessData.facebook || updatedBusinessData.instagram) {
+      const links = []
+      if (updatedBusinessData.facebook) links.push(updatedBusinessData.facebook)
+      if (updatedBusinessData.instagram) links.push(updatedBusinessData.instagram)
+      socialMediaLinksString = links.join(",")
+    } else if (typeof updatedBusinessData.socialMediaLinks === "string") {
+      socialMediaLinksString = updatedBusinessData.socialMediaLinks
     }
 
     // Map frontend fields to backend expected fields
@@ -853,23 +884,19 @@ export async function updateBusiness(
       address: updatedBusinessData.address,
       contact_phone: updatedBusinessData.phone,
       contact_email: updatedBusinessData.email,
-      website: updatedBusinessData.website,
-      facebook: updatedBusinessData.facebook,
-      instagram: updatedBusinessData.instagram,
-      opening_hours: updatedBusinessData.openingHours,
-      facilities: updatedBusinessData.facilities,
-      services: updatedBusinessData.services,
-      team: updatedBusinessData.team,
-      latitude: updatedBusinessData.latitude,
-      longitude: updatedBusinessData.longitude,
+      website: formatUrl(updatedBusinessData.website),
+      facebook: formatUrl(updatedBusinessData.facebook),
+      instagram: formatUrl(updatedBusinessData.instagram),
+      opening_hours: updatedBusinessData.openingHours || null,
+      facilities: updatedBusinessData.facilities || null,
+      services: updatedBusinessData.services || null,
+      team: updatedBusinessData.team || null,
+      latitude: updatedBusinessData.latitude || null,
+      longitude: updatedBusinessData.longitude || null,
       main_image: updatedBusinessData.mainImage,
-      gallery_images: updatedBusinessData.galleryImages,
-      social_media_links: updatedBusinessData.socialMediaLinks,
+      gallery_images: galleryImagesString || null,
+      social_media_links: socialMediaLinksString || null,
     }
-
-    // Convert to snake_case for API
-    const requestBody = toSnakeCase(mappedBusinessData)
-    console.log("Sending updated business data to backend:", requestBody)
 
     // Send data to API with timeout
     try {
@@ -880,7 +907,7 @@ export async function updateBusiness(
       const response = await fetch(`https://ai-driven-travel.onrender.com/api/business/businesses/${id}/`, {
         method: "PUT",
         headers,
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify(mappedBusinessData),
         signal: controller.signal,
       })
 

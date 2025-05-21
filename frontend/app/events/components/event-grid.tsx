@@ -64,4 +64,3 @@ const EventGrid = ({ events }: EventGridProps) => {
 }
 
 export default EventGrid
-

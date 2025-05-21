@@ -105,13 +105,37 @@ export const compressImage = async (file: File, maxWidth = 1200, quality = 0.8):
   })
 }
 
-/**
- * Uploads a file to Cloudinary
- * @param file The file to upload
- * @param path The folder in Cloudinary to upload to (e.g., 'users', 'blogs', 'events')
- * @param onProgress Optional callback for upload progress
- * @returns Promise with the download URL
- */
+// Add a direct Cloudinary upload function as a fallback
+export const directCloudinaryUpload = async (file: File, folder = "businesses"): Promise<string> => {
+  try {
+    console.log(`Starting direct Cloudinary upload for ${file.name}, size: ${file.size} bytes`)
+
+    // Create form data
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("upload_preset", folder)
+    formData.append("cloud_name", "dpasgcaqm")
+
+    // Upload directly to Cloudinary
+    const response = await fetch(`https://api.cloudinary.com/v1_1/dpasgcaqm/image/upload`, {
+      method: "POST",
+      body: formData,
+    })
+
+    if (!response.ok) {
+      throw new Error(`Direct Cloudinary upload failed with status: ${response.status}`)
+    }
+
+    const data = await response.json()
+    console.log("Direct Cloudinary upload successful:", data.secure_url)
+    return data.secure_url
+  } catch (error) {
+    console.error("Direct Cloudinary upload error:", error)
+    throw new Error("Failed to upload image directly to Cloudinary")
+  }
+}
+
+// Update the uploadFile function to use direct Cloudinary upload as a fallback
 export const uploadFile = async (file: File, path: string, onProgress?: ProgressCallback): Promise<string> => {
   try {
     // Validate the file before uploading
@@ -123,43 +147,55 @@ export const uploadFile = async (file: File, path: string, onProgress?: Progress
     // Compress the image before uploading (if it's an image)
     const compressedFile = await compressImage(file)
 
-    // Create a FormData object to send the file
-    const formData = new FormData()
-    formData.append("file", compressedFile)
-    formData.append("folder", path)
+    // First try the API route
+    try {
+      // Create a FormData object to send the file
+      const formData = new FormData()
+      formData.append("file", compressedFile)
+      formData.append("folder", path)
 
-    // Use XMLHttpRequest for better progress tracking
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest()
+      // Use XMLHttpRequest for better progress tracking
+      const apiRouteUrl = await new Promise<string>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
 
-      xhr.open("POST", "/api/upload", true)
+        xhr.open("POST", "/api/upload", true)
 
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable && onProgress) {
-          const progress = Math.round((event.loaded / event.total) * 100)
-          onProgress(progress)
-        }
-      }
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response = JSON.parse(xhr.responseText)
-            resolve(response.url)
-          } catch (error) {
-            reject(new Error("Invalid response from server"))
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable && onProgress) {
+            const progress = Math.round((event.loaded / event.total) * 100)
+            onProgress(progress)
           }
-        } else {
-          reject(new Error(`Upload failed with status: ${xhr.status}`))
         }
-      }
 
-      xhr.onerror = () => {
-        reject(new Error("Network error during upload"))
-      }
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.responseText)
+              resolve(response.url)
+            } catch (error) {
+              reject(new Error("Invalid response from server"))
+            }
+          } else {
+            reject(new Error(`Upload failed with status: ${xhr.status}`))
+          }
+        }
 
-      xhr.send(formData)
-    })
+        xhr.onerror = () => {
+          reject(new Error("Network error during upload"))
+        }
+
+        xhr.send(formData)
+      })
+
+      return apiRouteUrl
+    } catch (apiRouteError) {
+      console.error("API route upload failed, trying direct Cloudinary upload:", apiRouteError)
+
+      // Fall back to direct Cloudinary upload
+      if (onProgress) onProgress(30) // Reset progress for new upload attempt
+
+      return await directCloudinaryUpload(compressedFile, path)
+    }
   } catch (error) {
     console.error("Error in uploadFile:", error)
     throw error

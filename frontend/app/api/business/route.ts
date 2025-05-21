@@ -25,9 +25,30 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    // In a real app, you would validate the request and save to a database
-    // For now, we'll just return a success response
-    return NextResponse.json({ success: true })
+    // Parse the request body
+    const data = await request.json()
+
+    // Log the received data for debugging
+    console.log("Received business data in API route:", data)
+
+    // Forward the request to the backend API
+    const headers = new Headers(request.headers)
+
+    // Make sure we have the right content type
+    headers.set("Content-Type", "application/json")
+
+    // Forward the request to the backend API
+    const backendResponse = await fetch("https://ai-driven-travel.onrender.com/api/business/businesses/", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(data),
+    })
+
+    // Get the response data
+    const responseData = await backendResponse.json()
+
+    // Return the response with the same status code
+    return NextResponse.json(responseData, { status: backendResponse.status })
   } catch (error) {
     console.error("Error in business API:", error)
     return NextResponse.json({ error: "Failed to create business" }, { status: 500 })

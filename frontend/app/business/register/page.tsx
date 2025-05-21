@@ -316,7 +316,7 @@ export default function RegisterBusinessPage() {
     return Object.keys(errors).length === 0
   }
 
-  // Update the handleSubmit function to improve progress tracking and error handling
+  // Update the handleSubmit function to better handle image validation
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -355,8 +355,6 @@ export default function RegisterBusinessPage() {
         setUploadProgress(Math.round(totalProgress))
 
         // Update the toast message
-        // If your toast library supports updating by a returned id, use that API here.
-        // Otherwise, you may need to dismiss and re-show, or simply show a new toast.
         toast({
           title: "Uploading business data",
           description: `${
@@ -372,6 +370,17 @@ export default function RegisterBusinessPage() {
 
       // Prepare the business data
       updateProgress("preparing", 50)
+
+      // Ensure we have a valid main image before proceeding
+      if (!mainImage) {
+        toast({
+          title: "Image required",
+          description: "Please upload a main image for your business",
+          variant: "destructive",
+        })
+        setIsSubmitting(false)
+        return
+      }
 
       const businessData: BusinessData = {
         businessName: formData.businessName!,
@@ -425,7 +434,7 @@ export default function RegisterBusinessPage() {
       setUploadProgress(100)
 
       // Dismiss the upload toast
-      if (uploadToastId) {
+      if (uploadToastId && typeof uploadToastId.dismiss === "function") {
         uploadToastId.dismiss()
       }
 
@@ -434,7 +443,11 @@ export default function RegisterBusinessPage() {
           title: "Business registered",
           description: "Your business has been registered successfully.",
         })
-        router.push("/business/register/success")
+
+        // Add a small delay before redirecting to ensure toast is seen
+        setTimeout(() => {
+          router.push("/business/register/success")
+        }, 1500)
       } else {
         console.error("Registration error:", result.error)
         toast({

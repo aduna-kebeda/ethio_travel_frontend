@@ -29,7 +29,7 @@ export const HeroSection = () => {
 
   return (
     <section
-      className="relative h-[600px] md:h-[700px] bg-cover bg-center"
+      className="relative h-[400px] md:h-[500px] bg-cover bg-center"
       style={{ backgroundImage: "url('/assets/addis.jpg')" }}
     >
       <div className="absolute inset-0 bg-black/40"></div>
@@ -63,7 +63,7 @@ export const HeroSection = () => {
             interest by our AI
           </motion.h1>
 
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.6 }}
@@ -118,9 +118,9 @@ export const HeroSection = () => {
                 </button>
               </div>
             </div>
-          </motion.div>
+          </motion.div> */}
 
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.8 }}
@@ -151,7 +151,7 @@ export const HeroSection = () => {
             <p className="text-white text-sm font-medium">
               <span className="font-bold">2,500 people booked</span> Tommorowland Event in last 24 hours
             </p>
-          </motion.div>
+          </motion.div> */}
         </div>
       </motion.div>
 
