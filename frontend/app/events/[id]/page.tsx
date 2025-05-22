@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar, Clock, MapPin, Users, DollarSign, Share2 } from "lucide-react"
 import RegisterButton from "./register-button"
+import MapComponent from "../components/map-component"
 
 interface EventPageProps {
   params: {
@@ -124,9 +125,7 @@ export default async function EventPage({ params }: EventPageProps) {
               <div>
                 <h2 className="text-2xl font-semibold mb-4">Location</h2>
                 <p className="mb-2">{address}</p>
-                <div className="w-full h-[300px] bg-gray-200 rounded-lg flex items-center justify-center">
-                  <p className="text-muted-foreground">Map will be displayed here</p>
-                </div>
+                <MapComponent address={address} location={location} />
               </div>
             </div>
           </div>

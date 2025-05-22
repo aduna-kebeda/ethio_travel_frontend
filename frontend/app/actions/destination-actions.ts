@@ -122,7 +122,7 @@ export async function getDestinationById(
   id: string,
 ): Promise<{ success: boolean; data?: DestinationDetails; error?: string }> {
   try {
-    const token = getAuthToken()
+    const token = await getAuthToken()
 
     const headers: HeadersInit = {
       "Content-Type": "application/json",
@@ -156,7 +156,7 @@ export async function getDestinationReviews(
   sortBy?: string,
 ): Promise<{ success: boolean; data?: ReviewData[]; error?: string }> {
   try {
-    const token = getAuthToken()
+    const token = await getAuthToken()
 
     let url = `${API_URL}/destinations/destinations/${destinationId}/reviews/`
     if (sortBy) {

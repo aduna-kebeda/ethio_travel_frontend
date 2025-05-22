@@ -1,50 +1,43 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { useInView } from "react-intersection-observer"
 import { Loader2 } from "lucide-react"
-
-const aiDestinations = [
-  {
-    id: 1,
-    image: "assets/denakil.jpg",
-    title: "Afar, Danakil",
-    price: 150,
-    duration: "3 days tour",
-  },
-  {
-    id: 2,
-    image: "/assets/harar.jpg",
-    title: "Harar, Ethiopia",
-    price: 120,
-    duration: "2 days tour",
-  },
-  {
-    id: 3,
-    image: "/assets/omo.jpg",
-    title: "Sodo, Omo",
-    price: 200,
-    duration: "4 days tour",
-  },
-  {
-    id: 4,
-    image: "/assets/omo_hamer.jpg",
-    title: "Hamer, Omo",
-    price: 180,
-    duration: "3 days tour",
-  },
-]
+import { getDestinations } from "@/app/actions/destination-actions"
+import type { DestinationData } from "@/app/actions/destination-actions"
 
 export function AITravelSection() {
   const [isProcessing, setIsProcessing] = useState(false)
+  const [destinations, setDestinations] = useState<DestinationData[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const [ref, inView] = useInView({
     triggerOnce: true,
     threshold: 0.1,
   })
+
+  useEffect(() => {
+    const fetchDestinations = async () => {
+      setIsLoading(true)
+      try {
+        const result = await getDestinations()
+        if (result.success && result.data) {
+          // Take the first 4 destinations
+          const selectedDestinations = result.data.slice(0, 4)
+          setDestinations(selectedDestinations)
+        }
+      } catch (error) {
+        console.error("Error fetching destinations:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchDestinations()
+  }, [])
 
   const handleTalkToAI = () => {
     setIsProcessing(true)
@@ -55,7 +48,7 @@ export function AITravelSection() {
     }, 1500)
   }
 
-  const handleDestinationClick = (id: number) => {
+  const handleDestinationClick = (id: string) => {
     router.push(`/destinations/${id}`)
   }
 
@@ -95,38 +88,60 @@ export function AITravelSection() {
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12">
-          {aiDestinations.map((destination, index) => (
-            <motion.div
-              key={destination.id}
-              className="bg-white rounded-lg overflow-hidden shadow-sm cursor-pointer transform transition-all duration-300 hover:shadow-md hover:-translate-y-1"
-              onClick={() => handleDestinationClick(destination.id)}
-              initial={{ opacity: 0, y: 20 }}
-              animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-              transition={{ duration: 0.3, delay: 0.2 + index * 0.1 }}
-              whileHover={{ scale: 1.03 }}
-            >
-              <div className="relative h-48">
-                <Image
-                  src={destination.image || "/placeholder.svg"}
-                  alt={destination.title}
-                  fill
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-20 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <span className="text-white font-medium px-3 py-1 rounded-full bg-[#E91E63] text-sm">
-                    View Details
-                  </span>
+          {isLoading ? (
+            // Loading skeletons
+            Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="bg-white rounded-lg overflow-hidden shadow-sm animate-pulse">
+                <div className="h-48 bg-gray-200" />
+                <div className="p-4">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                  <div className="h-3 bg-gray-200 rounded w-1/2" />
                 </div>
               </div>
-              <div className="p-4">
-                <h3 className="font-bold text-sm">{destination.title}</h3>
-                <div className="flex justify-between items-center mt-2">
-                  <span className="text-[#E91E63] font-bold">${destination.price}</span>
-                  <span className="text-xs text-gray-500">{destination.duration}</span>
+            ))
+          ) : destinations.length > 0 ? (
+            destinations.map((destination, index) => (
+              <motion.div
+                key={destination.id}
+                className="bg-white rounded-lg overflow-hidden shadow-sm cursor-pointer transform transition-all duration-300 hover:shadow-md hover:-translate-y-1"
+                onClick={() => handleDestinationClick(destination.id)}
+                initial={{ opacity: 0, y: 20 }}
+                animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                transition={{ duration: 0.3, delay: 0.2 + index * 0.1 }}
+                whileHover={{ scale: 1.03 }}
+              >
+                <div className="relative h-48">
+                  <Image
+                    src={destination.images?.[0] || "/placeholder.svg"}
+                    alt={destination.title}
+                    fill
+                    className="object-cover"
+                    onError={(e) => {
+                      // If image fails to load, use placeholder
+                      const target = e.target as HTMLImageElement;
+                      target.src = "/placeholder.svg";
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-20 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span className="text-white font-medium px-3 py-1 rounded-full bg-[#E91E63] text-sm">
+                      View Details
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+                <div className="p-4">
+                  <h3 className="font-bold text-sm">{destination.title}</h3>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-[#E91E63] font-bold">{destination.region}</span>
+                    <span className="text-xs text-gray-500">{destination.city}</span>
+                  </div>
+                </div>
+              </motion.div>
+            ))
+          ) : (
+            <div className="col-span-4 text-center py-8">
+              <p className="text-gray-500">No destinations available at the moment.</p>
+            </div>
+          )}
         </div>
       </div>
     </section>

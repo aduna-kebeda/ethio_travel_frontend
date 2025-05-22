@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import { use } from "react"
 import { useState, useEffect } from "react"
 import { Container } from "@/components/container"
 import { Button } from "@/components/ui/button"
@@ -20,7 +20,6 @@ import {
 import {
   MapPin,
   Calendar,
-  Users,
   Star,
   Heart,
   Share2,
@@ -31,9 +30,22 @@ import {
   Info,
   ThumbsUp,
   Flag,
+  Clock,
+  Utensils,
+  Wifi,
+  DollarSign,
+  Languages,
+  AlertTriangle,
+  Compass,
+  Sun,
+  Cloud,
+  Umbrella,
 } from "lucide-react"
+import MapComponent from "../components/map-component"
+import { WeatherComponent } from "../components/weather-component"
 
-export default function DestinationDetailPage({ params }: { params: { id: string } }) {
+export default function DestinationDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params)
   const [destination, setDestination] = useState<DestinationDetails | null>(null)
   const [reviews, setReviews] = useState<ReviewData[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -42,6 +54,7 @@ export default function DestinationDetailPage({ params }: { params: { id: string
   const [reviewTitle, setReviewTitle] = useState("")
   const [reviewContent, setReviewContent] = useState("")
   const [isSubmittingReview, setIsSubmittingReview] = useState(false)
+  const [sortBy, setSortBy] = useState<"rating" | "helpful" | "created_at">("created_at")
   const { toast } = useToast()
 
   // Fetch destination data
@@ -51,13 +64,13 @@ export default function DestinationDetailPage({ params }: { params: { id: string
       setError(null)
 
       try {
-        const result = await getDestinationById(params.id)
+        const result = await getDestinationById(resolvedParams.id)
 
         if (result.success && result.data) {
           setDestination(result.data)
 
-          // Fetch reviews separately
-          const reviewsResult = await getDestinationReviews(params.id)
+          // Fetch reviews separately with sorting
+          const reviewsResult = await getDestinationReviews(resolvedParams.id, sortBy)
           if (reviewsResult.success && reviewsResult.data) {
             setReviews(reviewsResult.data)
           }
@@ -83,7 +96,7 @@ export default function DestinationDetailPage({ params }: { params: { id: string
     }
 
     fetchDestinationData()
-  }, [params.id, toast])
+  }, [resolvedParams.id, toast, sortBy])
 
   // Handle review submission
   const handleSubmitReview = async (e: React.FormEvent) => {
@@ -101,7 +114,7 @@ export default function DestinationDetailPage({ params }: { params: { id: string
     setIsSubmittingReview(true)
 
     try {
-      const result = await submitDestinationReview(params.id, {
+      const result = await submitDestinationReview(resolvedParams.id, {
         rating: reviewRating,
         title: reviewTitle,
         content: reviewContent,
@@ -199,6 +212,41 @@ export default function DestinationDetailPage({ params }: { params: { id: string
   // Format rating for display
   const formattedRating = Number.parseFloat(destination.rating).toFixed(1).replace(/\.0$/, "")
 
+  // Get current month for best time to visit
+  const currentMonth = new Date().getMonth()
+  const bestTimeToVisit = getBestTimeToVisit(currentMonth)
+
+  // Helper function to determine best time to visit
+  function getBestTimeToVisit(month: number) {
+    // Ethiopia has distinct dry and wet seasons
+    if (month >= 9 || month <= 2) {
+      // October to March (dry season)
+      return {
+        season: "Dry Season",
+        recommendation: "Excellent time to visit",
+        description:
+          "Clear skies and comfortable temperatures make this an ideal time for sightseeing and outdoor activities.",
+        icon: <Sun className="h-6 w-6 text-yellow-500" />,
+      }
+    } else if (month >= 3 && month <= 5) {
+      // April to June (small rainy season)
+      return {
+        season: "Small Rainy Season",
+        recommendation: "Good time to visit",
+        description: "Occasional showers but still good for most activities. Landscapes are lush and green.",
+        icon: <Cloud className="h-6 w-6 text-blue-400" />,
+      }
+    } else {
+      // July to September (main rainy season)
+      return {
+        season: "Main Rainy Season",
+        recommendation: "Less ideal for visiting",
+        description: "Heavy rainfall may affect outdoor activities and some roads may be difficult to access.",
+        icon: <Umbrella className="h-6 w-6 text-blue-600" />,
+      }
+    }
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <main className="flex-grow">
@@ -227,7 +275,7 @@ export default function DestinationDetailPage({ params }: { params: { id: string
                 </div>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Button className="bg-primary hover:bg-primary/90">Book Now</Button>
+                <Button className="bg-primary hover:bg-primary/90">Plan Your Visit</Button>
                 <Button variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20">
                   <Heart className="h-4 w-4 mr-2" /> Save
                 </Button>
@@ -249,8 +297,10 @@ export default function DestinationDetailPage({ params }: { params: { id: string
                     value="overview"
                     className="data-[state=active]:bg-primary data-[state=active]:text-white"
                   >
+                    
                     <Info className="h-4 w-4 mr-2" /> Overview
                   </TabsTrigger>
+                  
                   <TabsTrigger
                     value="gallery"
                     className="data-[state=active]:bg-primary data-[state=active]:text-white"
@@ -272,10 +322,45 @@ export default function DestinationDetailPage({ params }: { params: { id: string
                 </TabsList>
 
                 <TabsContent value="overview" className="mt-0">
-                  <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-                    <h2 className="text-2xl font-bold mb-4">About {destination.title}</h2>
+                  <div className="bg-white rounded-lg shadow-sm p-6">
+                    <h2 className="text-2xl font-bold mb-4">Overview</h2>
                     <div className="prose max-w-none">
                       <p>{destination.description}</p>
+                    </div>
+                    
+                    {/* Weather Component */}
+                    {/* <div className="mt-6">
+                      <WeatherComponent address={destination.address} city={destination.city} />
+                    </div> */}
+
+                    {/* Local Tips */}
+                    <div className="mt-6">
+                      <div className="flex items-center mb-2">
+                        <Compass className="h-5 w-5 text-primary mr-2" />
+                        <h4 className="font-semibold">Local Tips</h4>
+                      </div>
+                      <ul className="text-sm text-gray-600 space-y-2">
+                        <li className="flex items-start">
+                          <Languages className="h-4 w-4 text-gray-500 mr-2 mt-0.5" />
+                          <span>Amharic is the official language, but English is widely spoken in tourist areas</span>
+                        </li>
+                        <li className="flex items-start">
+                          <DollarSign className="h-4 w-4 text-gray-500 mr-2 mt-0.5" />
+                          <span>Local currency is Ethiopian Birr (ETB). Cash is preferred in most places</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Utensils className="h-4 w-4 text-gray-500 mr-2 mt-0.5" />
+                          <span>Try traditional Ethiopian coffee ceremony and injera with doro wat</span>
+                        </li>
+                        <li className="flex items-start">
+                          <Wifi className="h-4 w-4 text-gray-500 mr-2 mt-0.5" />
+                          <span>Internet connectivity may be limited in remote areas</span>
+                        </li>
+                        <li className="flex items-start">
+                          <AlertTriangle className="h-4 w-4 text-gray-500 mr-2 mt-0.5" />
+                          <span>Respect local customs and dress modestly when visiting religious sites</span>
+                        </li>
+                      </ul>
                     </div>
                   </div>
                 </TabsContent>
@@ -304,15 +389,8 @@ export default function DestinationDetailPage({ params }: { params: { id: string
                 <TabsContent value="location" className="mt-0">
                   <div className="bg-white rounded-xl shadow-md p-6">
                     <h2 className="text-2xl font-bold mb-6">Location</h2>
-                    <div className="aspect-video bg-gray-200 rounded-lg mb-6">
-                      {/* We could integrate a map here using the latitude and longitude */}
-                      <img
-                        src={`/placeholder.svg?height=400&width=800&text=Map+of+${encodeURIComponent(destination.title)}`}
-                        alt="Map"
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <MapComponent address={destination.address} location={`${destination.city}, ${formattedRegion}`} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                       <div>
                         <h3 className="font-bold mb-2">Address</h3>
                         <p className="text-gray-600 mb-4">{destination.address}</p>
@@ -345,7 +423,7 @@ export default function DestinationDetailPage({ params }: { params: { id: string
                       <h3 className="text-xl font-semibold mb-4">Write a Review</h3>
                       <form onSubmit={handleSubmitReview}>
                         <div className="mb-4">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Rating</label>
+                          <label className="block text-sm font-medium  mb-1">Rating</label>
                           <div className="flex items-center">
                             {[1, 2, 3, 4, 5].map((star) => (
                               <button key={star} type="button" onClick={() => setReviewRating(star)} className="p-1">
@@ -356,12 +434,12 @@ export default function DestinationDetailPage({ params }: { params: { id: string
                                 />
                               </button>
                             ))}
-                            <span className="ml-2 text-sm text-gray-500">{reviewRating} out of 5 stars</span>
+                            <span className="ml-2 text-sm ">{reviewRating} out of 5 stars</span>
                           </div>
                         </div>
 
                         <div className="mb-4">
-                          <label htmlFor="reviewTitle" className="block text-sm font-medium text-gray-700 mb-1">
+                          <label htmlFor="reviewTitle" className="block text-sm font-medium  mb-1">
                             Title
                           </label>
                           <input
@@ -369,21 +447,21 @@ export default function DestinationDetailPage({ params }: { params: { id: string
                             type="text"
                             value={reviewTitle}
                             onChange={(e) => setReviewTitle(e.target.value)}
-                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-white"
                             placeholder="Summarize your experience"
                             required
                           />
                         </div>
 
                         <div className="mb-4">
-                          <label htmlFor="reviewContent" className="block text-sm font-medium text-gray-700 mb-1">
+                          <label htmlFor="reviewContent" className="block text-sm font-medium mb-1">
                             Review
                           </label>
                           <textarea
                             id="reviewContent"
                             value={reviewContent}
                             onChange={(e) => setReviewContent(e.target.value)}
-                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary min-h-[100px]"
+                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary min-h-[100px] bg-white"
                             placeholder="Share your experience with this destination"
                             required
                           />
@@ -397,20 +475,34 @@ export default function DestinationDetailPage({ params }: { params: { id: string
 
                     {/* Reviews List */}
                     <div>
-                      <h3 className="text-xl font-semibold mb-4">
-                        {reviews.length} {reviews.length === 1 ? "Review" : "Reviews"}
-                      </h3>
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-semibold">
+                          {reviews.length} {reviews.length === 1 ? "Review" : "Reviews"}
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">Sort by:</span>
+                          <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value as "rating" | "helpful" | "created_at")}
+                            className="text-sm border rounded-md px-2 py-1 bg-white"
+                          >
+                            <option value="created_at">Most Recent</option>
+                            <option value="rating">Highest Rated</option>
+                            <option value="helpful">Most Helpful</option>
+                          </select>
+                        </div>
+                      </div>
 
                       {reviews.length === 0 ? (
                         <div className="text-center py-8 bg-gray-50 rounded-lg">
-                          <p className="text-gray-500">No reviews yet. Be the first to review this destination!</p>
+                          <p className="">No reviews yet. Be the first to review this destination!</p>
                         </div>
                       ) : (
                         <div className="space-y-6">
                           {reviews.map((review) => (
                             <div key={review.id} className="border-b pb-6 last:border-b-0 last:pb-0">
                               <div className="flex items-start gap-4">
-                                <div className="bg-gray-100 rounded-full h-10 w-10 flex items-center justify-center text-gray-700 font-semibold">
+                                <div className="bg-gray-100 rounded-full h-10 w-10 flex items-center justify-center font-semibold">
                                   {review.user.first_name.charAt(0)}
                                   {review.user.last_name.charAt(0)}
                                 </div>
@@ -462,122 +554,86 @@ export default function DestinationDetailPage({ params }: { params: { id: string
               </Tabs>
             </div>
 
-            {/* Sidebar */}
+            {/* Sidebar - Replaced booking section with travel information */}
             <div className="space-y-6">
+              {/* Travel Information Card */}
               <div className="bg-white rounded-xl shadow-md p-6">
-                <h3 className="text-xl font-bold mb-4">Book This Tour</h3>
+                <h3 className="text-xl font-bold mb-4">Travel Information</h3>
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Travel Date</label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <input
-                        type="date"
-                        className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                      />
+                  {/* Best Time to Visit */}
+                  <div className="border-b pb-4">
+                    <div className="flex items-center mb-2">
+                      <Calendar className="h-5 w-5 text-primary mr-2" />
+                      <h4 className="font-semibold">Best Time to Visit</h4>
                     </div>
+                    <div className="flex items-center mb-2">
+                      {bestTimeToVisit.icon}
+                      <span className="ml-2 font-medium">
+                        {bestTimeToVisit.season} - {bestTimeToVisit.recommendation}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600">{bestTimeToVisit.description}</p>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Travelers</label>
-                    <div className="relative">
-                      <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <select className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent appearance-none">
-                        <option>1 Person</option>
-                        <option>2 People</option>
-                        <option>3 People</option>
-                        <option>4+ People</option>
-                      </select>
+                  {/* Visiting Hours */}
+                  <div className="border-b pb-4">
+                    <div className="flex items-center mb-2">
+                      <Clock className="h-5 w-5 text-primary mr-2" />
+                      <h4 className="font-semibold">Visiting Hours</h4>
                     </div>
-                  </div>
-
-                  <div className="pt-4 border-t">
-                    <div className="flex justify-between mb-2">
-                      <span>Base Price</span>
-                      <span>$120</span>
-                    </div>
-                    <div className="flex justify-between mb-2">
-                      <span>Guide Fee</span>
-                      <span>$30</span>
-                    </div>
-                    <div className="flex justify-between mb-2">
-                      <span>Tax</span>
-                      <span>$15</span>
-                    </div>
-                    <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                      <span>Total</span>
-                      <span>$165</span>
-                    </div>
-                  </div>
-
-                  <Button className="w-full bg-primary hover:bg-primary/90">Book Now</Button>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-md p-6">
-                <h3 className="text-xl font-bold mb-4">Weather</h3>
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <div className="text-5xl font-light mb-2">22°C</div>
-                  <div className="text-gray-500">Partly Cloudy</div>
-                  <div className="mt-4 grid grid-cols-4 gap-2">
-                    <div className="text-center">
-                      <div className="text-xs text-gray-500">Mon</div>
-                      <div className="text-sm font-medium">21°</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xs text-gray-500">Tue</div>
-                      <div className="text-sm font-medium">23°</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xs text-gray-500">Wed</div>
-                      <div className="text-sm font-medium">22°</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xs text-gray-500">Thu</div>
-                      <div className="text-sm font-medium">20°</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Similar Destinations */}
-          <div className="mt-16">
-            <h2 className="text-2xl font-bold mb-6">Similar Destinations</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[1, 2, 3, 4].map((item) => (
-                <div key={item} className="bg-white rounded-xl shadow-md overflow-hidden">
-                  <div className="relative h-48">
-                    <img
-                      src={`/placeholder.svg?height=300&width=400&text=Destination+${item}`}
-                      alt={`Destination ${item}`}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-3 right-3">
-                      <Bookmark className="h-5 w-5 text-white" />
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-bold mb-1">
-                      {formattedCategory} Site {item}
-                    </h3>
-                    <div className="flex items-center text-sm text-gray-500 mb-2">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      <span>{formattedRegion}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                        <span className="text-sm ml-1">4.7</span>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <p className="font-medium">Weekdays:</p>
+                        <p className="text-gray-600">8:00 AM - 5:00 PM</p>
                       </div>
-                      <span className="font-bold">$95</span>
+                      <div>
+                        <p className="font-medium">Weekends:</p>
+                        <p className="text-gray-600">9:00 AM - 6:00 PM</p>
+                      </div>
                     </div>
                   </div>
+
+                 
                 </div>
-              ))}
+              </div>
+
+              {/* Weather Card */}
+              <div className="bg-white rounded-xl shadow-md p-6">
+                <WeatherComponent address={destination.address} city={destination.city} />
+              </div>
+
+              {/* Nearby Attractions Card - New addition */}
+              <div className="bg-white rounded-xl shadow-md p-6">
+                <h3 className="text-xl font-bold mb-4">Nearby Attractions</h3>
+                <div className="space-y-3">
+                  {[1, 2, 3].map((item) => (
+                    <div key={item} className="flex items-start gap-3 pb-3 border-b last:border-b-0 last:pb-0">
+                      <div className="h-16 w-16 rounded-md overflow-hidden flex-shrink-0">
+                        <img
+                          src={`/placeholder.svg?height=64&width=64&text=Nearby+${item}`}
+                          alt={`Nearby attraction ${item}`}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-sm">Nearby Attraction {item}</h4>
+                        <p className="text-xs text-gray-500 mb-1">2.{item} km away</p>
+                        <div className="flex items-center">
+                          <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                          <span className="text-xs ml-1">4.{item}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <Button variant="outline" className="w-full mt-2">
+                    View All Nearby
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
+
+         
         </Container>
       </main>
 
