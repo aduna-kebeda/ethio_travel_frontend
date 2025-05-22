@@ -156,14 +156,14 @@ function BlogPageContent() {
             <SearchFilter categories={categoriesData.map((cat) => cat.name)} />
             <FeaturedPosts posts={otherFeaturedPosts} />
             <LatestPosts posts={latestPosts} />
-            <CreatePostCTA />
-            <CategorySection
+            {/* <CreatePostCTA /> */}
+            {/* <CategorySection
               categories={categoriesData.map((cat) => ({
                 ...cat,
                 image: "/placeholder.svg?height=40&width=40",
               }))}
-            />
-            <Newsletter />
+            /> */}
+            {/* <Newsletter /> */}
           </div>
         </Container>
       </main>

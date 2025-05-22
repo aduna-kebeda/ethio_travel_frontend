@@ -146,21 +146,7 @@ export function Chatbot() {
 
   // Generate contextual quick replies
   const getContextualQuickReplies = (messageText: string): QuickReply[] => {
-    if (messageText.includes("weather")) {
-      return [
-        { id: "weather-addis", text: "Weather in Addis Ababa" },
-        { id: "weather-gondar", text: "Weather in Gondar" },
-        { id: "weather-lalibela", text: "Weather in Lalibela" },
-        { id: "weather-bahir", text: "Weather in Bahir Dar" },
-      ]
-    } else if (messageText.includes("visa")) {
-      return [
-        { id: "visa-apply", text: "How to apply for a visa" },
-        { id: "visa-requirements", text: "Visa requirements" },
-        { id: "visa-duration", text: "Visa duration" },
-        { id: "visa-cost", text: "Visa cost" },
-      ]
-    } else if (messageText.includes("destinations") || messageText.includes("lalibela") || messageText.includes("gondar") || messageText.includes("axum") || messageText.includes("simien")) {
+    if (messageText.includes("destinations") || messageText.includes("lalibela") || messageText.includes("gondar") || messageText.includes("axum") || messageText.includes("simien")) {
       return [
         { id: "lalibela", text: "Explore Lalibela" },
         { id: "gondar", text: "Explore Gondar" },
@@ -176,9 +162,9 @@ export function Chatbot() {
     }
     return [
       { id: "destinations", text: "Popular destinations" },
-      { id: "visa", text: "Visa requirements" },
-      { id: "weather", text: "Check weather" },
-      { id: "human", text: "Speak to a human" },
+      { id: "tours", text: "Tour packages" },
+      { id: "accommodation", text: "Find accommodation" },
+      { id: "transport", text: "Transportation options" },
     ]
   }
 
@@ -368,9 +354,9 @@ export function Chatbot() {
         await simulateTyping(welcomeMessage)
         setQuickReplies([
           { id: "destinations", text: "Popular destinations" },
-          { id: "visa", text: "Visa requirements" },
-          { id: "weather", text: "Check weather" },
-          { id: "human", text: "Speak to a human" },
+          { id: "tours", text: "Tour packages" },
+          { id: "accommodation", text: "Find accommodation" },
+          { id: "transport", text: "Transportation options" },
         ])
       }
     }
@@ -407,9 +393,9 @@ export function Chatbot() {
       setMessages((prev) => [...prev, continueMessage])
       setQuickReplies([
         { id: "destinations", text: "Popular destinations" },
-        { id: "visa", text: "Visa requirements" },
-        { id: "weather", text: "Check weather" },
-        { id: "human", text: "Speak to a human" },
+        { id: "tours", text: "Tour packages" },
+        { id: "accommodation", text: "Find accommodation" },
+        { id: "transport", text: "Transportation options" },
       ])
     } else if (replyId === "details" && isHumanRequested) {
       const detailsMessage: Message = {
@@ -479,138 +465,104 @@ export function Chatbot() {
 
             {!isMinimized && (
               <>
-                <div className="p-4 overflow-y-auto bg-gray-50" style={{ height: "calc(100% - 180px)" }}>
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`mb-4 flex ${
-                        msg.sender === "user" ? "justify-end" : "justify-start"
-                      } items-start gap-3 max-w-[85%] ${msg.sender === "user" ? "ml-auto" : "mr-auto"}`}
-                    >
-                      {msg.sender === "bot" && (
-                        <Avatar className="h-8 w-8 bg-primary text-white shadow-sm mt-1">
+                <div className="flex flex-col h-full">
+                  <div className="flex-1 p-4 overflow-y-auto bg-gray-50" style={{ height: "calc(100% - 80px)" }}>
+                    {messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`mb-4 flex ${
+                          msg.sender === "user" ? "justify-end" : "justify-start"
+                        } items-start gap-3 max-w-[85%] ${msg.sender === "user" ? "ml-auto" : "mr-auto"}`}
+                      >
+                        {msg.sender === "bot" && (
+                          <Avatar className="h-8 w-8 bg-primary text-white shadow-sm mt-1">
+                            <MessageSquare className="h-4 w-4" />
+                          </Avatar>
+                        )}
+                        <div
+                          className={`rounded-lg px-4 py-2 shadow-sm ${
+                            msg.sender === "user"
+                              ? "bg-primary text-white"
+                              : "bg-white text-gray-800"
+                          }`}
+                        >
+                          <div
+                            className="text-sm leading-relaxed"
+                            dangerouslySetInnerHTML={{ __html: parseMarkdown(msg.content) }}
+                          />
+                          <p className="text-xs mt-1 opacity-70 text-right">
+                            {new Date(msg.created_at).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                        {msg.sender === "user" && (
+                          <Avatar className="h-8 w-8 bg-gray-300 shadow-sm mt-1">
+                            <User className="h-4 w-4" />
+                          </Avatar>
+                        )}
+                      </div>
+                    ))}
+                    {isTyping && (
+                      <div className="flex items-center space-x-2 justify-start">
+                        <Avatar className="h-8 w-8 bg-primary text-white shadow-sm">
                           <MessageSquare className="h-4 w-4" />
                         </Avatar>
-                      )}
-                      <div
-                        className={`rounded-lg px-4 py-2 shadow-sm ${
-                          msg.sender === "user"
-                            ? "bg-primary text-white"
-                            : "bg-white text-gray-800"
-                        }`}
-                      >
-                        <div
-                          className="text-sm leading-relaxed"
-                          dangerouslySetInnerHTML={{ __html: parseMarkdown(msg.content) }}
-                        />
-                        <p className="text-xs mt-1 opacity-70 text-right">
-                          {new Date(msg.created_at).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                      </div>
-                      {msg.sender === "user" && (
-                        <Avatar className="h-8 w-8 bg-gray-300 shadow-sm mt-1">
-                          <User className="h-4 w-4" />
-                        </Avatar>
-                      )}
-                    </div>
-                  ))}
-                  {isTyping && (
-                    <div className="flex items-center space-x-2 justify-start">
-                      <Avatar className="h-8 w-8 bg-primary text-white shadow-sm">
-                        <MessageSquare className="h-4 w-4" />
-                      </Avatar>
-                      <div className="bg-white text-gray-800 rounded-lg px-4 py-2 shadow-sm">
-                        <div className="flex space-x-1">
-                          <div
-                            className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"
-                            style={{ animationDelay: "0ms" }}
-                          ></div>
-                          <div
-                            className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"
-                            style={{ animationDelay: "300ms" }}
-                          ></div>
-                          <div
-                            className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"
-                            style={{ animationDelay: "600ms" }}
-                          ></div>
+                        <div className="bg-white text-gray-800 rounded-lg px-4 py-2 shadow-sm">
+                          <div className="flex space-x-1">
+                            <div
+                              className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"
+                              style={{ animationDelay: "0ms" }}
+                            ></div>
+                            <div
+                              className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"
+                              style={{ animationDelay: "300ms" }}
+                            ></div>
+                            <div
+                              className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"
+                              style={{ animationDelay: "600ms" }}
+                            ></div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {quickReplies.length > 0 && (
-                    <div className="grid grid-cols-2 gap-2 mt-4">
-                      {quickReplies.map((reply) => (
-                        <button
-                          key={reply.id}
-                          onClick={() => handleQuickReplyClick(reply.id, reply.text)}
-                          className="bg-white hover:bg-gray-100 text-gray-800 text-xs py-2 px-3 rounded-md shadow-sm border border-gray-200 transition-colors text-left"
-                        >
-                          {reply.text}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                    {quickReplies.length > 0 && (
+                      <div className="grid grid-cols-2 gap-2 mt-4">
+                        {quickReplies.map((reply) => (
+                          <button
+                            key={reply.id}
+                            onClick={() => handleQuickReplyClick(reply.id, reply.text)}
+                            className="bg-white hover:bg-gray-100 text-gray-800 text-xs py-2 px-3 rounded-md shadow-sm border border-gray-200 transition-colors text-left"
+                          >
+                            {reply.text}
+                          </button>
+                        ))}
+                      </div>
+                    )}
 
-                  <div ref={messagesEndRef} />
-                </div>
-
-                <div className="border-t p-4 bg-white flex-shrink-0">
-                  <div className="flex items-center">
-                    <Input
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder="Type your message..."
-                      className="flex-grow shadow-sm text-sm"
-                      disabled={isTyping}
-                    />
-                    <Button
-                      onClick={handleSendMessage}
-                      className="ml-2"
-                      size="icon"
-                      disabled={message.trim() === "" || isTyping}
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
+                    <div ref={messagesEndRef} />
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs justify-start"
-                      onClick={() => handleQuickReplyClick("visa", "Visa requirements")}
-                    >
-                      Visa Requirements
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs justify-start"
-                      onClick={() => handleQuickReplyClick("weather", "Check weather")}
-                    >
-                      Check Weather
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs justify-start"
-                      onClick={() => handleQuickReplyClick("destinations", "Popular destinations")}
-                    >
-                      Destinations
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs justify-start text-red-500"
-                      onClick={() => handleQuickReplyClick("human", "Speak to a human")}
-                    >
-                      Human Support
-                    </Button>
+                  <div className="border-t p-4 mb-10 bg-white mt-auto">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder="Type your message..."
+                        className="flex-grow shadow-sm text-sm"
+                        disabled={isTyping}
+                      />
+                      <Button
+                        onClick={handleSendMessage}
+                        size="icon"
+                        disabled={message.trim() === "" || isTyping}
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </>
