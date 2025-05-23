@@ -1,26 +1,30 @@
-'use client'
+"use client"
 
 import { useEffect, useState } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { MapPin } from "lucide-react"
 
-interface MapComponentProps {
+interface MapProps {
+  address: string
   location: string
 }
 
-export const MapComponent = ({ location }: MapComponentProps) => {
-  const [mapUrl, setMapUrl] = useState<string>("")
+export function Map({ address, location }: MapProps) {
   const [isLoading, setIsLoading] = useState(true)
+  const [mapUrl, setMapUrl] = useState("")
 
   useEffect(() => {
     const loadMap = async () => {
       try {
         setIsLoading(true)
-        // Add Ethiopia to the location for better accuracy
-        const fullAddress = `${location}, Ethiopia`
+        // Format the address with proper spacing and commas
+        const formattedAddress = address.trim()
+        const formattedLocation = location.trim()
+        const fullAddress = `${formattedAddress}, ${formattedLocation}, Ethiopia`
         const encodedAddress = encodeURIComponent(fullAddress)
         
-        // Use direct Google Maps embed URL
-        const mapUrl = `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3940.5205105887855!2d38.7639!3d9.0320!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zOcKwMDEnNTIuMCJOIDM4wrA0NSc1MC4wIkU!5e0!3m2!1sen!2set!4v1620000000000!5m2!1sen!2set&q=${encodedAddress}`
+        // Use the same URL format as events map that works without API key
+        const mapUrl = `https://maps.google.com/maps?q=${encodedAddress}&t=m&z=15&output=embed`
         setMapUrl(mapUrl)
       } catch (error) {
         console.error("Error loading map:", error)
@@ -30,7 +34,7 @@ export const MapComponent = ({ location }: MapComponentProps) => {
     }
 
     loadMap()
-  }, [location])
+  }, [address, location])
 
   if (isLoading) {
     return (
@@ -41,16 +45,25 @@ export const MapComponent = ({ location }: MapComponentProps) => {
   }
 
   return (
-    <div className="w-full h-[400px] rounded-lg overflow-hidden">
-      <iframe
-        src={mapUrl}
-        width="100%"
-        height="100%"
-        style={{ border: 0 }}
-        allowFullScreen
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-      />
+    <div className="space-y-4">
+      <div className="relative h-[400px] bg-gray-100 rounded-lg overflow-hidden">
+        <iframe
+          title="Location"
+          width="100%"
+          height="100%"
+          frameBorder="0"
+          scrolling="no"
+          marginHeight={0}
+          marginWidth={0}
+          src={mapUrl}
+          className="absolute inset-0"
+          loading="lazy"
+        />
+      </div>
+      <div className="flex items-center text-gray-700">
+        <MapPin className="h-5 w-5 text-primary mr-2" />
+        <span>{address}, {location}, Ethiopia</span>
+      </div>
     </div>
   )
 } 

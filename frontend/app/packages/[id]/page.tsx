@@ -30,11 +30,15 @@ import { PackageReviewList } from "../components/package-review-list"
 import { PackageReviewForm } from "../components/package-review-form"
 import type { PackageData, ReviewData } from "@/app/actions/package-actions"
 
-// Replace the DynamicMap component with a simple Google Maps embed
-const DynamicMap = dynamic(
-  () => import('@/components/map').then((mod) => mod.MapComponent),
-  { ssr: false }
-)
+// Import the shared Map component
+const Map = dynamic(() => import('@/components/map').then((mod) => mod.Map), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[400px] rounded-lg overflow-hidden">
+      <div className="w-full h-full bg-gray-100 animate-pulse" />
+    </div>
+  ),
+})
 
 export default function PackageDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
@@ -466,7 +470,10 @@ export default function PackageDetailPage({ params }: { params: Promise<{ id: st
 
                       <div className="aspect-video relative rounded-lg overflow-hidden mb-6">
                         {packageDetail && (
-                          <DynamicMap location={`${packageDetail.location}, ${packageDetail.region}, Ethiopia`} />
+                          <Map 
+                            address={packageDetail.location}
+                            location={packageDetail.region}
+                          />
                         )}
                       </div>
 

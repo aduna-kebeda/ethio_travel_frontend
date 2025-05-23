@@ -216,12 +216,12 @@ export default function MyBusinessPage() {
 
   const getStatusBadge = (status: string, isVerified: boolean) => {
     if (isVerified) {
-      return (
-        <Badge className="bg-primary/20 text-green-800 hover:bg-primary/20 flex items-center gap-1">
-          <CheckCircle className="h-3 w-3" />
-          Verified
-        </Badge>
-      )
+        return (
+          <Badge className="bg-primary/20 text-green-800 hover:bg-primary/20 flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" />
+            Verified
+          </Badge>
+        )
     }
 
     switch (status) {
