@@ -23,19 +23,27 @@ export function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
+  const [isExploreOpen, setIsExploreOpen] = useState(false) // State for Explore dropdown
   const { user, isAuthenticated, isLoading, logout } = useAuth()
 
   const navItems = [
     { name: "Home", href: "/home" },
+    { name: "Destinations", href: "/destinations" },
     { name: "About", href: "/about" },
-    { name: "Events", href: "/events" },
-    { name: "Packages", href: "/packages" },
-    { name: "Business", href: "/business" },
+    {
+      name: "Explore",
+      items: [
+        { name: "Events", href: "/events" },
+        { name: "Packages", href: "/packages" },
+        { name: "Business", href: "/business" },
+      ],
+    },
     { name: "Blog", href: "/blog" },
   ]
 
   const handleNavigation = (href: string) => {
     setIsOpen(false)
+    setIsExploreOpen(false) // Close Explore dropdown on navigation
     router.push(href)
   }
 
@@ -43,7 +51,6 @@ export function Navbar() {
     try {
       await logoutUser()
       logout()
-      // Redirect to home page after logout
       router.push("/home")
     } catch (error) {
       console.error("Logout error:", error)
@@ -51,12 +58,9 @@ export function Navbar() {
   }
 
   useEffect(() => {
-    // This will force a re-render when auth state changes
     const handleAuthChange = () => {
-      // Just forcing a re-render
       setIsOpen(isOpen)
     }
-
     window.addEventListener("auth-state-changed", handleAuthChange)
     return () => {
       window.removeEventListener("auth-state-changed", handleAuthChange)
@@ -75,24 +79,73 @@ export function Navbar() {
 
           {/* Centered Navigation */}
           <nav className="hidden md:flex md:items-center md:justify-center md:flex-1 md:space-x-8">
-            {navItems.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  "relative px-1 py-2 text-sm font-semibold transition-colors hover:text-primary group",
-                  pathname === item.href ? "text-primary" : "text-secondary",
-                )}
-              >
-                {item.name}
-                <span
+            {navItems.map((item) =>
+              item.items ? (
+                <DropdownMenu
+                  key={item.name}
+                  open={isExploreOpen}
+                  onOpenChange={setIsExploreOpen}
+                >
+                  <DropdownMenuTrigger asChild>
+                    <div
+                      className={cn(
+                        "relative px-1 py-2 text-sm font-semibold transition-colors hover:text-primary cursor-pointer group",
+                        item.items.some((subItem) => pathname === subItem.href)
+                          ? "text-primary"
+                          : "text-secondary",
+                      )}
+                      onMouseEnter={() => setIsExploreOpen(true)} // Open on hover
+                      onMouseLeave={() => setIsExploreOpen(false)} // Close on hover out
+                    >
+                      {item.name}
+                      <span
+                        className={cn(
+                          "absolute bottom-0 left-0 h-0.5 bg-primary transition-all duration-300",
+                          item.items.some((subItem) => pathname === subItem.href)
+                            ? "w-full"
+                            : "w-0 group-hover:w-full",
+                        )}
+                      />
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="center"
+                    className="bg-white border border-gray-200 shadow-lg rounded-md p-2"
+                    onMouseEnter={() => setIsExploreOpen(true)} // Keep open on content hover
+                    onMouseLeave={() => setIsExploreOpen(false)} // Close on content hover out
+                  >
+                    {item.items.map((subItem) => (
+                      <DropdownMenuItem
+                        key={subItem.name}
+                        asChild
+                        className="hover:bg-gray-100 text-gray-700 rounded-sm"
+                      >
+                        <Link href={subItem.href} onClick={() => handleNavigation(subItem.href)}>
+                          {subItem.name}
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Link
+                  key={item.name}
+                  href={item.href}
                   className={cn(
-                    "absolute bottom-0 left-0 h-0.5 bg-primary transition-all duration-300",
-                    pathname === item.href ? "w-full" : "w-0 group-hover:w-full",
+                    "relative px-1 py-2 text-sm font-semibold transition-colors hover:text-primary group",
+                    pathname === item.href ? "text-primary" : "text-secondary",
                   )}
-                />
-              </Link>
-            ))}
+                >
+                  {item.name}
+                  <span
+                    className={cn(
+                      "absolute bottom-0 left-0 h-0.5 bg-primary transition-all duration-300",
+                      pathname === item.href ? "w-full" : "w-0 group-hover:w-full",
+                    )}
+                  />
+                </Link>
+              )
+            )}
           </nav>
 
           <div className="flex items-center space-x-4">
@@ -100,13 +153,6 @@ export function Navbar() {
               <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse"></div>
             ) : isUserAuthenticated ? (
               <>
-                {/* <Button variant="ghost" size="icon" className="relative rounded-md">
-                  <ClientOnly>
-                    <Bell className="h-5 w-5" />
-                  </ClientOnly>
-                  <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-primary"></span>
-                </Button> */}
-
                 <div className="hidden md:flex items-center space-x-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -147,8 +193,9 @@ export function Navbar() {
                           <img
                             src={user.profile_image || "/placeholder.svg"}
                             alt={user.first_name || user.username}
-                            className="h-full w-full object-cover"
-                          />
+                            className="h-full w-full object
+
+-cover" />
                         ) : (
                           <ClientOnly>
                             <User className="h-5 w-5" />
@@ -165,18 +212,12 @@ export function Navbar() {
                       {user.first_name ? `${user.first_name} ${user.last_name}` : user.username}
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-gray-200" />
-                    {/* <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
-                      <Link href="/profile">My Profile</Link>
-                    </DropdownMenuItem> */}
                     <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
                       <Link href="/business/my-business">My Business</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
                       <Link href="/blog/my-posts">My Blog Posts</Link>
                     </DropdownMenuItem>
-                    {/* <DropdownMenuItem asChild className="hover:bg-gray-100 text-gray-700 rounded-sm">
-                      <Link href="/settings">Settings</Link>
-                    </DropdownMenuItem> */}
                     <DropdownMenuSeparator className="bg-gray-200" />
                     <DropdownMenuItem
                       onClick={handleLogout}
@@ -213,20 +254,44 @@ export function Navbar() {
         {isOpen && (
           <div className="md:hidden py-4 border-t">
             <div className="flex flex-col space-y-3">
-              {navItems.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    "px-3 py-2 text-base font-semibold relative",
-                    pathname === item.href ? "text-primary" : "text-gray-700 hover:text-primary",
-                  )}
-                  onClick={() => setIsOpen(false)}
-                >
-                  {item.name}
-                  {pathname === item.href && <span className="absolute bottom-1 left-3 right-3 h-0.5 bg-primary" />}
-                </Link>
-              ))}
+              {navItems.map((item) =>
+                item.items ? (
+                  <div key={item.name} className="flex flex-col">
+                    <div className="px-3 py-2 text-base font-semibold text-gray-700">
+                      {item.name}
+                    </div>
+                    {item.items.map((subItem) => (
+                      <Link
+                        key={subItem.name}
+                        href={subItem.href}
+                        className={cn(
+                          "pl-6 px-3 py-2 text-base font-semibold relative",
+                          pathname === subItem.href ? "text-primary" : "text-gray-700 hover:text-primary",
+                        )}
+                        onClick={() => setIsOpen(false)}
+                      >
+                        {subItem.name}
+                        {pathname === subItem.href && (
+                          <span className="absolute bottom-1 left-6 right-3 h-0.5 bg-primary" />
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={cn(
+                      "px-3 py-2 text-base font-semibold relative",
+                      pathname === item.href ? "text-primary" : "text-gray-700 hover:text-primary",
+                    )}
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {item.name}
+                    {pathname === item.href && <span className="absolute bottom-1 left-3 right-3 h-0.5 bg-primary" />}
+                  </Link>
+                )
+              )}
               {isUserAuthenticated ? (
                 <>
                   <Link
