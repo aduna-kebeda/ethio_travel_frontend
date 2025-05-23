@@ -391,7 +391,7 @@ export default function DestinationDetailPage({ params }: { params: Promise<{ id
                     <h2 className="text-2xl font-bold mb-6">Location</h2>
                     <MapComponent address={destination.address} location={`${destination.city}, ${formattedRegion}`} />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                      <div>
+                      {/* <div>
                         <h3 className="font-bold mb-2">Address</h3>
                         <p className="text-gray-600 mb-4">{destination.address}</p>
                         <div className="flex space-x-2">
@@ -400,7 +400,7 @@ export default function DestinationDetailPage({ params }: { params: Promise<{ id
                             {destination.latitude}, {destination.longitude}
                           </span>
                         </div>
-                      </div>
+                      </div> */}
                       <div>
                         <h3 className="font-bold mb-2">Region</h3>
                         <p className="text-gray-600 mb-4">

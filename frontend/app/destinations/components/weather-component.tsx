@@ -38,26 +38,47 @@ export function WeatherComponent({ address, city }: WeatherComponentProps) {
         if (!process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY) {
           throw new Error("OpenWeatherMap API key is not configured")
         }
-        
-        // First get coordinates from the address
-        const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          `${address}, ${city}, Ethiopia`
-        )}`
-        
-        const geocodeResponse = await fetch(geocodeUrl)
-        const geocodeData = await geocodeResponse.json()
-        
-        if (!geocodeData || geocodeData.length === 0) {
-          throw new Error(`Location not found for ${address}, ${city}`)
+
+        // Try different address formats in order of specificity
+        const addressFormats = [
+          `${city}, Ethiopia`, // Just city
+          `${address}, ${city}, Ethiopia`, // Full address
+          `${city}, Amhara Region, Ethiopia`, // City with region
+          `${city}, North Wollo, Ethiopia`, // Alternative region
+          `${city}, Ethiopia` // Fallback to just city
+        ]
+
+        let geocodeData = null
+        let geocodeError = null
+
+        // Try each address format until one works
+        for (const format of addressFormats) {
+          try {
+            const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(format)}`
+            const geocodeResponse = await fetch(geocodeUrl)
+            const data = await geocodeResponse.json()
+            
+            if (data && data.length > 0) {
+              geocodeData = data
+              break
+            }
+          } catch (err) {
+            geocodeError = err
+            continue
+          }
         }
-        
+
+        if (!geocodeData || geocodeData.length === 0) {
+          throw new Error(`Location not found for ${city}`)
+        }
+
         const { lat, lon } = geocodeData[0]
-        
+
         // Get current weather
         const currentWeatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY}&units=metric`
         const currentWeatherResponse = await fetch(currentWeatherUrl)
         const currentWeatherData = await currentWeatherResponse.json()
-        
+
         if (currentWeatherData.cod !== 200) {
           throw new Error(`Weather data error: ${currentWeatherData.message || 'Unknown error'}`)
         }
@@ -75,7 +96,7 @@ export function WeatherComponent({ address, city }: WeatherComponentProps) {
         const dailyForecasts = forecastData.list.reduce((acc: any[], item: any) => {
           const date = new Date(item.dt * 1000).toLocaleDateString('en-US', { weekday: 'short' })
           const existingDay = acc.find(day => day.date === date)
-          
+
           if (existingDay) {
             existingDay.temp = (existingDay.temp + item.main.temp) / 2
           } else {
@@ -88,7 +109,7 @@ export function WeatherComponent({ address, city }: WeatherComponentProps) {
           }
           return acc
         }, []).slice(0, 4) // Get only next 4 days
-        
+
         setWeather({
           current: {
             temp: parseFloat(currentWeatherData.main.temp.toFixed(1)),
@@ -136,7 +157,7 @@ export function WeatherComponent({ address, city }: WeatherComponentProps) {
           <p className="text-gray-500 mb-2">Weather information unavailable</p>
           {error && (
             <p className="text-sm text-red-500">
-              {error === "OpenWeatherMap API key is not configured" 
+              {error === "OpenWeatherMap API key is not configured"
                 ? "Please configure the OpenWeatherMap API key in .env.local"
                 : error}
             </p>
