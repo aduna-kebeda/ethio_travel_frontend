@@ -109,12 +109,12 @@ export function TripPlanner() {
 
         <div className="relative h-full min-h-[400px] lg:min-h-0">
           <img
-            src="/placeholder.svg?height=800&width=600&text=Plan+Your+Trip"
+            src="/assets/resort.jpg"
             alt="Trip Planning"
             className="w-full h-full object-cover"
           />
           <div className="absolute bottom-6 right-6 max-w-[200px] rounded-lg overflow-hidden shadow-lg">
-            <img src="/placeholder.svg?height=200&width=200&text=AI+Planner" alt="AI Trip Planner" className="w-full" />
+            <img src="/assets/beach.jpg" alt="AI Trip Planner" className="w-full" />
           </div>
         </div>
       </div>

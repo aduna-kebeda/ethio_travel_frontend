@@ -93,7 +93,7 @@ export function DestinationCard({ destination }: DestinationCardProps) {
             <span className="text-gray-500 text-sm font-normal">Explore</span>
           </div>
           <Link href={`/destinations/${destination.id}`}>
-            <Button size="sm" className="bg-primary hover:bg-primary/90">
+            <Button size="sm" className="bg-primary rounded-full hover:bg-primary/90">
               View Details
             </Button>
           </Link>
