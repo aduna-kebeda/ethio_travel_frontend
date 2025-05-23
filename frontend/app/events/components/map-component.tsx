@@ -13,19 +13,36 @@ const MapComponent = ({ address, location }: MapComponentProps) => {
   const [mapUrl, setMapUrl] = useState("")
 
   useEffect(() => {
-    const fullAddress = `${address}, ${location}`
-    const encodedAddress = encodeURIComponent(fullAddress)
-    const url = `https://www.google.com/maps/embed/v1/place?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&q=${encodedAddress}`
-    setMapUrl(url)
-    setIsLoading(false)
+    const loadMap = async () => {
+      try {
+        setIsLoading(true)
+        // Use the full address including location and Ethiopia
+        const fullAddress = `${address}, ${location}, Ethiopia`
+        const encodedAddress = encodeURIComponent(fullAddress)
+        
+        // Use a simple Google Maps embed URL with just the address
+        const mapUrl = `https://www.google.com/maps/embed/v1/place?q=${encodedAddress}&zoom=15`
+        setMapUrl(mapUrl)
+      } catch (error) {
+        console.error("Error loading map:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadMap()
   }, [address, location])
 
   if (isLoading) {
-    return <Skeleton className="w-full h-[300px] rounded-lg" />
+    return (
+      <div className="w-full h-[400px] rounded-lg overflow-hidden">
+        <Skeleton className="w-full h-full" />
+      </div>
+    )
   }
 
   return (
-    <div className="w-full h-[300px] rounded-lg overflow-hidden">
+    <div className="w-full h-[400px] rounded-lg overflow-hidden">
       <iframe
         src={mapUrl}
         width="100%"

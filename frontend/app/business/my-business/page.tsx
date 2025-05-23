@@ -214,15 +214,17 @@ export default function MyBusinessPage() {
     router.push(`/business/edit/${id}`)
   }
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, isVerified: boolean) => {
+    if (isVerified) {
+      return (
+        <Badge className="bg-primary/20 text-green-800 hover:bg-primary/20 flex items-center gap-1">
+          <CheckCircle className="h-3 w-3" />
+          Verified
+        </Badge>
+      )
+    }
+
     switch (status) {
-      case "approved":
-        return (
-          <Badge className="bg-primary/20 text-green-800 hover:bg-primary/20 flex items-center gap-1">
-            <CheckCircle className="h-3 w-3" />
-            Verified
-          </Badge>
-        )
       case "pending":
         return (
           <Badge
@@ -339,7 +341,7 @@ export default function MyBusinessPage() {
                     <TableRow key={business.id}>
                       <TableCell className="font-medium">{business.name}</TableCell>
                       <TableCell>{business.business_type}</TableCell>
-                      <TableCell>{getStatusBadge(business.status)}</TableCell>
+                      <TableCell>{getStatusBadge(business.status, business.is_verified || false)}</TableCell>
                       <TableCell>{new Date(business.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
