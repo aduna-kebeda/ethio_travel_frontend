@@ -6,8 +6,15 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://ai-driven-travel.onr
 
 // Helper function to get the auth token
 const getAuthToken = async () => {
-  const cookieStore = await cookies()
-  return cookieStore.get("authToken")?.value
+  try {
+    const cookieStore = await cookies()
+    const token = cookieStore.get("authToken")?.value
+    console.log('Auth token:', token ? 'Found' : 'Not found')
+    return token
+  } catch (error) {
+    console.error('Error getting auth token:', error)
+    return null
+  }
 }
 
 // Interface for destination data
@@ -195,7 +202,7 @@ export async function submitDestinationReview(
   reviewData: { rating: number; title: string; content: string },
 ): Promise<{ success: boolean; data?: ReviewData; error?: string }> {
   try {
-    const token = getAuthToken()
+    const token = await getAuthToken()
 
     if (!token) {
       return { success: false, error: "Authentication required to submit a review" }
@@ -209,14 +216,19 @@ export async function submitDestinationReview(
       },
       body: JSON.stringify({
         destination: destinationId,
+        user: {}, // API expects this field
         rating: reviewData.rating,
         title: reviewData.title,
         content: reviewData.content,
       }),
+      credentials: 'include',
     })
 
     if (!response.ok) {
       const errorData = await response.json()
+      if (response.status === 400 && errorData.error === "You have already reviewed this destination") {
+        return { success: false, error: "You have already reviewed this destination" }
+      }
       throw new Error(errorData.error || `Error submitting review: ${response.status}`)
     }
 

@@ -114,11 +114,19 @@ export default function DestinationDetailPage({ params }: { params: Promise<{ id
     setIsSubmittingReview(true)
 
     try {
+      console.log('Submitting review:', {
+        rating: reviewRating,
+        title: reviewTitle.trim(),
+        content: reviewContent.trim(),
+      })
+
       const result = await submitDestinationReview(resolvedParams.id, {
         rating: reviewRating,
-        title: reviewTitle,
-        content: reviewContent,
+        title: reviewTitle.trim(),
+        content: reviewContent.trim(),
       })
+
+      console.log('Review submission result:', result)
 
       if (result.success && result.data) {
         toast({
@@ -126,8 +134,17 @@ export default function DestinationDetailPage({ params }: { params: Promise<{ id
           description: "Thank you for sharing your experience!",
         })
 
-        // Add the new review to the list
+        // Add the new review to the list and update destination rating
         setReviews([result.data, ...reviews])
+        if (destination) {
+          const currentRating = parseFloat(destination.rating.toString())
+          const newRating = ((currentRating * destination.review_count) + result.data.rating) / (destination.review_count + 1)
+          setDestination({
+            ...destination,
+            review_count: destination.review_count + 1,
+            rating: newRating.toString()
+          })
+        }
 
         // Reset form
         setReviewRating(5)
@@ -141,6 +158,7 @@ export default function DestinationDetailPage({ params }: { params: Promise<{ id
         })
       }
     } catch (err) {
+      console.error('Review submission error:', err)
       const errorMessage = err instanceof Error ? err.message : "An unknown error occurred"
       toast({
         title: "Error",
@@ -421,12 +439,17 @@ export default function DestinationDetailPage({ params }: { params: Promise<{ id
                     {/* Review Form */}
                     <div className="mb-8 border-b pb-8">
                       <h3 className="text-xl font-semibold mb-4">Write a Review</h3>
-                      <form onSubmit={handleSubmitReview}>
+                      <form onSubmit={handleSubmitReview} className="space-y-4">
                         <div className="mb-4">
-                          <label className="block text-sm font-medium  mb-1">Rating</label>
+                          <label className="block text-sm font-medium mb-1">Rating</label>
                           <div className="flex items-center">
                             {[1, 2, 3, 4, 5].map((star) => (
-                              <button key={star} type="button" onClick={() => setReviewRating(star)} className="p-1">
+                              <button 
+                                key={star} 
+                                type="button" 
+                                onClick={() => setReviewRating(star)} 
+                                className="p-1 focus:outline-none"
+                              >
                                 <Star
                                   className={`h-6 w-6 ${
                                     star <= reviewRating ? "text-yellow-400 fill-current" : "text-gray-300"
@@ -434,12 +457,12 @@ export default function DestinationDetailPage({ params }: { params: Promise<{ id
                                 />
                               </button>
                             ))}
-                            <span className="ml-2 text-sm ">{reviewRating} out of 5 stars</span>
+                            <span className="ml-2 text-sm">{reviewRating} out of 5 stars</span>
                           </div>
                         </div>
 
                         <div className="mb-4">
-                          <label htmlFor="reviewTitle" className="block text-sm font-medium  mb-1">
+                          <label htmlFor="reviewTitle" className="block text-sm font-medium mb-1">
                             Title
                           </label>
                           <input
@@ -467,7 +490,15 @@ export default function DestinationDetailPage({ params }: { params: Promise<{ id
                           />
                         </div>
 
-                        <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmittingReview}>
+                        <Button 
+                          type="submit" 
+                          className="bg-primary hover:bg-primary/90" 
+                          disabled={isSubmittingReview}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleSubmitReview(e);
+                          }}
+                        >
                           {isSubmittingReview ? "Submitting..." : "Submit Review"}
                         </Button>
                       </form>
@@ -495,7 +526,7 @@ export default function DestinationDetailPage({ params }: { params: Promise<{ id
 
                       {reviews.length === 0 ? (
                         <div className="text-center py-8 bg-gray-50 rounded-lg">
-                          <p className="">No reviews yet. Be the first to review this destination!</p>
+                          <p className="text-gray-600">No reviews yet. Be the first to review this destination!</p>
                         </div>
                       ) : (
                         <div className="space-y-6">

@@ -13,7 +13,11 @@ class Event(models.Model):
         ('sports', 'Sports'),
         ('business', 'Business'),
         ('educational', 'Educational'),
+         ('religious', 'Religious'),  # Added
+        ('festival', 'Festival'),    # Added
+        ('historical', 'Historical'), # Added
         ('other', 'Other')
+      
     ]
     
     STATUS_CHOICES = [
