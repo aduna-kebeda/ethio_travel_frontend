@@ -57,7 +57,7 @@ class Package(models.Model):
     tour_guide = models.CharField(max_length=100)
     languages = models.JSONField(default=default_json_list)
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.00)
-    coordinates = models.JSONField(default=default_json_list)
+    coordinates = models.JSONField(default=default_json_list, blank=True, null=True)
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default='draft'
     )
