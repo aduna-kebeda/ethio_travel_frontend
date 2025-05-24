@@ -77,10 +77,14 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'ethiotravel.wsgi.application'
 
-# PostgreSQL configuration
+# Database
+# https://docs.djangoproject.com/en/3.2/ref/settings/#databases
+
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL', 'postgresql://postgres:1234@localhost:5432/ethiotravel')
+        default=os.getenv('DATABASE_URL', 'postgresql://neondb_owner:npg_Enwj4gyAsBa3@ep-muddy-bush-a20mv2kh-pooler.eu-central-1.aws.neon.tech/ethiotravel?sslmode=require'),
+        conn_max_age=600,
+        conn_health_checks=True,
     )
 }
 
