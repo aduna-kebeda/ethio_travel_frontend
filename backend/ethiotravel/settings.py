@@ -81,11 +81,17 @@ WSGI_APPLICATION = 'ethiotravel.wsgi.application'
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL', 'postgresql://neondb_owner:npg_Enwj4gyAsBa3@ep-muddy-bush-a20mv2kh-pooler.eu-central-1.aws.neon.tech/ethiotravel?sslmode=require'),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'ethiotravel',
+        'USER': 'neondb_owner',
+        'PASSWORD': 'npg_Enwj4gyAsBa3',
+        'HOST': 'ep-muddy-bush-a20mv2kh-pooler.eu-central-1.aws.neon.tech',
+        'PORT': '5432',
+        'OPTIONS': {
+            'sslmode': 'require',
+        },
+    }
 }
 
 # Custom user model
@@ -248,9 +254,6 @@ if not DEBUG:
 # API Keys
 GOOGLE_MAPS_API_KEY = os.getenv('GOOGLE_MAPS_API_KEY')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-
-# GridFS settings for media storage
-GRIDFS_DATABASE = os.getenv('MONGODB_NAME', 'ethiotravel')
 
 # Swagger settings
 SWAGGER_SETTINGS = {
