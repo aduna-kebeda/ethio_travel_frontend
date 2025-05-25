@@ -80,6 +80,12 @@ class Business(models.Model):
             while Business.objects.filter(slug=self.slug).exists():
                 self.slug = f"{original_slug}-{counter}"
                 counter += 1
+        # Cast longitude and latitude to 6 decimal places if they are not None
+        if self.latitude is not None:
+            self.latitude = round(float(self.latitude), 6)
+        if self.longitude is not None:
+            self.longitude = round(float(self.longitude), 6)
+        
         super().save(*args, **kwargs)
 
     def __str__(self):
