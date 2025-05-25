@@ -6,15 +6,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://ai-driven-travel.onr
 
 // Helper function to get the auth token
 const getAuthToken = async () => {
-  try {
-    const cookieStore = await cookies()
-    const token = cookieStore.get("authToken")?.value
-    console.log('Auth token:', token ? 'Found' : 'Not found')
-    return token
-  } catch (error) {
-    console.error('Error getting auth token:', error)
-    return null
-  }
+  const cookieStore = await cookies()
+  return cookieStore.get("access_token")?.value
 }
 
 // Interface for destination data
@@ -221,7 +214,6 @@ export async function submitDestinationReview(
         title: reviewData.title,
         content: reviewData.content,
       }),
-      credentials: 'include',
     })
 
     if (!response.ok) {

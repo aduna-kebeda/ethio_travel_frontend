@@ -77,6 +77,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'ethiotravel.wsgi.application'
 
+
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 DATABASES = {
@@ -169,8 +170,8 @@ REST_FRAMEWORK = {
 
 # JWT settings
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-    'REFRESH_TOKEN_LIFETIME': timedelta(hours=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'ALGORITHM': 'HS256',
@@ -247,6 +248,9 @@ if not DEBUG:
 # API Keys
 GOOGLE_MAPS_API_KEY = os.getenv('GOOGLE_MAPS_API_KEY')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+
+# GridFS settings for media storage
+GRIDFS_DATABASE = os.getenv('MONGODB_NAME', 'ethiotravel')
 
 # Swagger settings
 SWAGGER_SETTINGS = {
