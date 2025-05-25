@@ -79,10 +79,11 @@ WSGI_APPLICATION = 'ethiotravel.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
-
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL', 'postgresql://postgres:1234@localhost:5432/ethiotravel')
+        default=os.getenv('DATABASE_URL', 'postgresql://postgres:1234@localhost:5432/ethiotravel'),
+        conn_max_age=600,
+        engine='django.db.backends.postgresql'  # Explicitly set PostgreSQL backend
     )
 }
 
@@ -168,8 +169,8 @@ REST_FRAMEWORK = {
 
 # JWT settings
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(hours=1),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'ALGORITHM': 'HS256',
