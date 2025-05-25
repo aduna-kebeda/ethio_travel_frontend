@@ -81,17 +81,9 @@ WSGI_APPLICATION = 'ethiotravel.wsgi.application'
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'ethiotravel',
-        'USER': 'neondb_owner',
-        'PASSWORD': 'npg_Enwj4gyAsBa3',
-        'HOST': 'ep-muddy-bush-a20mv2kh-pooler.eu-central-1.aws.neon.tech',
-        'PORT': '5432',
-        'OPTIONS': {
-            'sslmode': 'require',
-        },
-    }
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL', 'postgresql://postgres:1234@localhost:5432/ethiotravel')
+    )
 }
 
 # Custom user model
