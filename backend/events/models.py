@@ -36,8 +36,8 @@ class Event(models.Model):
     end_date = models.DateTimeField()
     location = models.CharField(max_length=400)
     address = models.TextField()
-    latitude = models.DecimalField(max_digits=9, null=True, blank=True)
-    longitude = models.DecimalField(max_digits=9, null=True, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     featured = models.BooleanField(default=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     organizer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='organized_events')
@@ -55,6 +55,12 @@ class Event(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.title)
+        # Cast longitude and latitude to 6 decimal places if they are not None
+        if self.latitude is not None:
+            self.latitude = round(float(self.latitude), 6)
+        if self.longitude is not None:
+            self.longitude = round(float(self.longitude), 6)
+        
         super().save(*args, **kwargs)
     
     class Meta:
